@@ -1,0 +1,15 @@
+name: 'Amazon Insepctor Check'
+description: 'Check results of amazon inspect on image'
+inputs:
+  repository:
+    description: 'repository name'
+    required: true
+  tag:
+    description: 'image tag'
+    required: true
+outputs:
+  image:
+    description: 'The repository and tag of the scanned image'
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
