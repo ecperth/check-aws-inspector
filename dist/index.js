@@ -28051,12 +28051,12 @@ async function scan() {
         try {
             let x = await client.send(command);
             console.log(x);
-            await delay(100);
+            await delay(50);
             break;
         }
         catch (err) {
             if (err instanceof client_ecr_1.ScanNotFoundException) {
-                console.log("Scan Incomplete waiting 100ms");
+                console.log("Scan Incomplete waiting 50ms");
                 continue;
             }
             else {
@@ -28106,7 +28106,6 @@ try {
     //const repository = core.getInput("repository");
     //const tag = core.getInput("tag");
     //core.setOutput("image", repository + ":" + tag);
-    console.log("test");
     (0, ecr_1.scan)();
 }
 catch (error) {

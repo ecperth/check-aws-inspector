@@ -23,11 +23,11 @@ export async function scan() {
     try {
       let x = await client.send(command);
       console.log(x);
-      await delay(100);
+      await delay(50);
       break;
     } catch (err: unknown) {
       if (err instanceof ScanNotFoundException) {
-        console.log("Scan Incomplete waiting 100ms");
+        console.log("Scan Incomplete waiting 50ms");
         continue;
       } else {
         console.log("ERROR: ", err);

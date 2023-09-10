@@ -5,7 +5,6 @@ try {
   //const repository = core.getInput("repository");
   //const tag = core.getInput("tag");
   //core.setOutput("image", repository + ":" + tag);
-  console.log("test");
   scan();
 } catch (error: any) {
   core.setFailed(error.message);
