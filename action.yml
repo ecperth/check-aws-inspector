@@ -2,11 +2,21 @@ name: 'Amazon Insepctor Check'
 description: 'Check results of amazon inspect on image'
 inputs:
   repository:
-    description: 'repository name'
+    description: 'Repository name'
     required: true
   tag:
-    description: 'image tag'
+    description: 'Tag of scanned image'
     required: true
+  delay:
+    description: 'Time in ms between attempt to retrieve scan findings'
+    default: '100'
+  timeout:
+    description: 'Max total time in seconds to wait for complete scan findings'
+    default: '300'
+  failSeverity: 
+    description: 'The unacceptable severity of any scanned vulnerabilities'
+    default: 'CRITICAL'
+    
 outputs:
   image:
     description: 'The repository and tag of the scanned image'

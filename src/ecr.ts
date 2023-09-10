@@ -1,38 +1,53 @@
 import {
   ECRClient,
   DescribeImageScanFindingsCommand,
+  DescribeImageScanFindingsCommandOutput,
   ScanNotFoundException,
 } from "@aws-sdk/client-ecr";
+import { findingSeverities } from "./scanner";
 
 const client = new ECRClient({ region: "ap-southeast-2" });
 
-function delay(milliseconds: number) {
+function wait(milliseconds: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
 }
 
-export async function scan(repository: string, tag: string) {
+export async function scan(
+  repository: string,
+  tag: string,
+  delay: number,
+  timeout: number,
+  failSeverity: string,
+): Promise<DescribeImageScanFindingsCommandOutput> {
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
     imageId: {
       imageTag: tag,
     },
   });
+  const startTime = Date.now();
 
-  while (true) {
+  do {
     try {
-      console.log(await client.send(command));
-      break;
+      client.send(command).then((resp) => {
+        processImageScanFindings(resp, failSeverity);
+      });
     } catch (err: unknown) {
       if (err instanceof ScanNotFoundException) {
-        console.log("Scan Incomplete waiting 50ms");
-        await delay(50);
+        console.log(`Scan incomplete, retrying in ${delay}ms`);
+        await wait(delay);
         continue;
-      } else {
-        console.log("ERROR: ", err);
-        break;
       }
     }
-  }
+  } while (Date.now() - startTime < timeout);
+  throw new Error("Scan findings timed out!");
+}
+
+function processImageScanFindings(
+  imageScanFindings: DescribeImageScanFindingsCommandOutput,
+  failSeverity: string,
+) {
+  console.log(imageScanFindings.imageScanFindings?.findingSeverityCounts);
 }

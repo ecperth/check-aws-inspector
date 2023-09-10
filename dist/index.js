@@ -28035,37 +28035,39 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
-function delay(milliseconds) {
+function wait(milliseconds) {
     return new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
     });
 }
-async function scan(repository, tag) {
+async function scan(repository, tag, delay, timeout, failSeverity) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
             imageTag: tag,
         },
     });
-    while (true) {
+    const startTime = Date.now();
+    do {
         try {
-            console.log(await client.send(command));
-            break;
+            client.send(command).then((resp) => {
+                processImageScanFindings(resp, failSeverity);
+            });
         }
         catch (err) {
             if (err instanceof client_ecr_1.ScanNotFoundException) {
-                console.log("Scan Incomplete waiting 50ms");
-                await delay(50);
+                console.log(`Scan incomplete, retrying in ${delay}ms`);
+                await wait(delay);
                 continue;
             }
-            else {
-                console.log("ERROR: ", err);
-                break;
-            }
         }
-    }
+    } while (Date.now() - startTime < timeout);
+    throw new Error("Scan findings timed out!");
 }
 exports.scan = scan;
+function processImageScanFindings(imageScanFindings, failSeverity) {
+    console.log(imageScanFindings.imageScanFindings?.findingSeverityCounts);
+}
 
 
 /***/ }),
@@ -28101,15 +28103,40 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(42186));
 const ecr_1 = __nccwpck_require__(27918);
+const scanner_1 = __nccwpck_require__(83232);
 try {
     const repository = core.getInput("repository");
     const tag = core.getInput("tag");
-    //core.setOutput("image", repository + ":" + tag);
-    (0, ecr_1.scan)(repository, tag);
+    const delay = +core.getInput("delay");
+    const timeout = +core.getInput("timeout");
+    const failSeverity = core.getInput("failSeverity");
+    if (!scanner_1.findingSeverities.includes(failSeverity)) {
+        throw new Error(`Invalid severity: ${failSeverity}`);
+    }
+    core.setOutput("image", repository + ":" + tag);
+    (0, ecr_1.scan)(repository, tag, delay, timeout, failSeverity);
 }
 catch (error) {
     core.setFailed(error.message);
 }
+
+
+/***/ }),
+
+/***/ 83232:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.findingSeverities = void 0;
+exports.findingSeverities = [
+    "CRITICAL",
+    "HIGH",
+    "MEDIUM",
+    "LOW",
+    "INFORMATIONAL",
+];
 
 
 /***/ }),
