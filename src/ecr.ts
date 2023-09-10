@@ -31,9 +31,10 @@ export async function scan(
 
   do {
     try {
-      client.send(command).then((resp) => {
+      await client.send(command).then((resp) => {
         processImageScanFindings(resp, failSeverity);
       });
+      break;
     } catch (err: unknown) {
       if (err instanceof ScanNotFoundException) {
         console.log(`Scan incomplete, retrying in ${delay}ms`);

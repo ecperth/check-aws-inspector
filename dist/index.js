@@ -28050,9 +28050,10 @@ async function scan(repository, tag, delay, timeout, failSeverity) {
     const startTime = Date.now();
     do {
         try {
-            client.send(command).then((resp) => {
+            await client.send(command).then((resp) => {
                 processImageScanFindings(resp, failSeverity);
             });
+            break;
         }
         catch (err) {
             if (err instanceof client_ecr_1.ScanNotFoundException) {
