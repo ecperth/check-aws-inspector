@@ -35,6 +35,7 @@ const scan = async () => {
         continue;
       } else {
         console.log("ERROR: ", err);
+        break;
       }
     }
   }
