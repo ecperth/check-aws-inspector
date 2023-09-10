@@ -18,11 +18,7 @@ function delay(milliseconds: number) {
   });
 }
 
-export const main = async () => {
-  scan();
-};
-
-const scan = async () => {
+export const scan = async () => {
   while (true) {
     try {
       let x = await client.send(command);

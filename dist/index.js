@@ -28160,7 +28160,8 @@ try {
     //const repository = core.getInput("repository");
     //const tag = core.getInput("tag");
     //core.setOutput("image", repository + ":" + tag);
-    (0, ecr_1.main)();
+    console.log("test");
+    (0, ecr_1.scan)();
 }
 catch (error) {
     core.setFailed(error.message);
