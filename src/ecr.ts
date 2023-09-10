@@ -6,7 +6,7 @@ import {
 
 const client = new ECRClient({ region: "ap-southeast-2" });
 const command = new DescribeImageScanFindingsCommand({
-  repositoryName: "amazon-inspector-check-test",
+  repositoryName: "check-aws-inspector-test",
   imageId: {
     imageTag: "latest",
   },

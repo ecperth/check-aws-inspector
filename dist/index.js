@@ -28036,7 +28036,7 @@ exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
 const command = new client_ecr_1.DescribeImageScanFindingsCommand({
-    repositoryName: "amazon-inspector-check-test",
+    repositoryName: "check-aws-inspector-test",
     imageId: {
         imageTag: "latest",
     },
