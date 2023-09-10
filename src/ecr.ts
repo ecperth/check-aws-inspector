@@ -18,9 +18,9 @@ function delay(milliseconds: number) {
   });
 }
 
-async function main() {
+export const main = async () => {
   scan();
-}
+};
 
 const scan = async () => {
   while (true) {
@@ -39,5 +39,3 @@ const scan = async () => {
     }
   }
 };
-
-main();
