@@ -28061,7 +28061,7 @@ async function scan(repository, tag, delay, timeout, failSeverity) {
                 continue;
             }
         }
-    } while (Date.now() - startTime < timeout);
+    } while ((Date.now() - startTime) / 1000 < timeout);
     throw new Error("Scan findings timed out!");
 }
 exports.scan = scan;
