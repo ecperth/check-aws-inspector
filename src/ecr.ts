@@ -5,12 +5,6 @@ import {
 } from "@aws-sdk/client-ecr";
 
 const client = new ECRClient({ region: "ap-southeast-2" });
-const command = new DescribeImageScanFindingsCommand({
-  repositoryName: "check-aws-inspector-test",
-  imageId: {
-    imageTag: "latest",
-  },
-});
 
 function delay(milliseconds: number) {
   return new Promise((resolve) => {
@@ -18,16 +12,22 @@ function delay(milliseconds: number) {
   });
 }
 
-export async function scan() {
+export async function scan(repository: string, tag: string) {
+  const command = new DescribeImageScanFindingsCommand({
+    repositoryName: repository,
+    imageId: {
+      imageTag: tag,
+    },
+  });
+
   while (true) {
     try {
-      let x = await client.send(command);
-      console.log(x);
-      await delay(50);
+      console.log(await client.send(command));
       break;
     } catch (err: unknown) {
       if (err instanceof ScanNotFoundException) {
         console.log("Scan Incomplete waiting 50ms");
+        await delay(50);
         continue;
       } else {
         console.log("ERROR: ", err);

@@ -28035,28 +28035,27 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
-const command = new client_ecr_1.DescribeImageScanFindingsCommand({
-    repositoryName: "check-aws-inspector-test",
-    imageId: {
-        imageTag: "latest",
-    },
-});
 function delay(milliseconds) {
     return new Promise((resolve) => {
         setTimeout(resolve, milliseconds);
     });
 }
-async function scan() {
+async function scan(repository, tag) {
+    const command = new client_ecr_1.DescribeImageScanFindingsCommand({
+        repositoryName: repository,
+        imageId: {
+            imageTag: tag,
+        },
+    });
     while (true) {
         try {
-            let x = await client.send(command);
-            console.log(x);
-            await delay(50);
+            console.log(await client.send(command));
             break;
         }
         catch (err) {
             if (err instanceof client_ecr_1.ScanNotFoundException) {
                 console.log("Scan Incomplete waiting 50ms");
+                await delay(50);
                 continue;
             }
             else {
@@ -28103,10 +28102,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(42186));
 const ecr_1 = __nccwpck_require__(27918);
 try {
-    //const repository = core.getInput("repository");
-    //const tag = core.getInput("tag");
+    const repository = core.getInput("repository");
+    const tag = core.getInput("tag");
     //core.setOutput("image", repository + ":" + tag);
-    (0, ecr_1.scan)();
+    (0, ecr_1.scan)(repository, tag);
 }
 catch (error) {
     core.setFailed(error.message);
