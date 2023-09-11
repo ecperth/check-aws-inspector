@@ -28,6 +28,11 @@ export async function scan(
     .send(command)
     .then((resp) => {
       if (resp.imageScanStatus?.status === "PENDING") {
+        if (maxRetries === 0) {
+          return {
+            errorMessage: `Failed to retrieve scan findings after max_retries`,
+          };
+        }
         console.log(
           `Scan status is "Pending". Retrying in ${delay}ms. ${
             maxRetries - 1
