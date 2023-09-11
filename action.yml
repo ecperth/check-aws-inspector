@@ -18,8 +18,8 @@ inputs:
     default: 'CRITICAL'
     
 outputs:
-  image:
-    description: 'The repository and tag of the scanned image'
+  findingSeverityCounts:
+    description: 'Counts of scanned vulnerabilities grouped by severity'
 runs:
   using: 'node16'
   main: 'dist/index.js'

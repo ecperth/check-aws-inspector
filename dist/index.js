@@ -28034,6 +28034,7 @@ exports["default"] = _default;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
+const scanner_1 = __nccwpck_require__(83232);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
 function wait(milliseconds) {
     return new Promise((resolve) => {
@@ -28048,12 +28049,11 @@ async function scan(repository, tag, delay, timeout, failSeverity) {
         },
     });
     const startTime = Date.now();
-    do {
+    while (true) {
         try {
-            await client.send(command).then((resp) => {
-                processImageScanFindings(resp, failSeverity);
-            });
-            break;
+            return client
+                .send(command)
+                .then((resp) => processImageScanFindings(resp, failSeverity));
         }
         catch (err) {
             if (err instanceof client_ecr_1.ScanNotFoundException) {
@@ -28062,12 +28062,28 @@ async function scan(repository, tag, delay, timeout, failSeverity) {
                 continue;
             }
         }
-    } while ((Date.now() - startTime) / 1000 < timeout);
-    throw new Error("Scan findings timed out!");
+        const runningTime = (Date.now() - startTime) / 1000;
+        if (runningTime >= timeout) {
+            return {
+                errorMessage: `Scan findings timed out after ${runningTime} seconds`,
+            };
+        }
+    }
 }
 exports.scan = scan;
 function processImageScanFindings(imageScanFindings, failSeverity) {
-    console.log(imageScanFindings.imageScanFindings?.findingSeverityCounts);
+    const result = {
+        findingSeverityCounts: imageScanFindings.imageScanFindings.findingSeverityCounts,
+    };
+    for (const severity in result.findingSeverityCounts) {
+        if (scanner_1.findingSeverities[severity] > scanner_1.findingSeverities[failSeverity]) {
+            break;
+        }
+        else {
+            result.errorMessage = `Found at least 1 vulnerabilty with severity ${failSeverity} or higher`;
+        }
+    }
+    return result;
 }
 
 
@@ -28111,11 +28127,15 @@ try {
     const delay = +core.getInput("delay");
     const timeout = +core.getInput("timeout");
     const failSeverity = core.getInput("failSeverity");
-    if (!scanner_1.findingSeverities.includes(failSeverity)) {
+    if (scanner_1.findingSeverities[failSeverity] == undefined) {
         throw new Error(`Invalid severity: ${failSeverity}`);
     }
-    core.setOutput("image", repository + ":" + tag);
-    (0, ecr_1.scan)(repository, tag, delay, timeout, failSeverity);
+    (0, ecr_1.scan)(repository, tag, delay, timeout, failSeverity).then((scanFindings) => {
+        core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);
+        if (scanFindings.errorMessage) {
+            core.setFailed(scanFindings.errorMessage);
+        }
+    });
 }
 catch (error) {
     core.setFailed(error.message);
@@ -28131,13 +28151,13 @@ catch (error) {
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.findingSeverities = void 0;
-exports.findingSeverities = [
-    "CRITICAL",
-    "HIGH",
-    "MEDIUM",
-    "LOW",
-    "INFORMATIONAL",
-];
+exports.findingSeverities = {
+    CRITICAL: 0,
+    HIGH: 1,
+    MEDIUM: 2,
+    LOW: 3,
+    INFORMATIONAL: 4,
+};
 
 
 /***/ }),

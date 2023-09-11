@@ -4,7 +4,7 @@ import {
   DescribeImageScanFindingsCommandOutput,
   ScanNotFoundException,
 } from "@aws-sdk/client-ecr";
-import { findingSeverities } from "./scanner";
+import { findingSeverities, ScanFindings } from "./scanner";
 
 const client = new ECRClient({ region: "ap-southeast-2" });
 
@@ -20,7 +20,7 @@ export async function scan(
   delay: number,
   timeout: number,
   failSeverity: string,
-): Promise<DescribeImageScanFindingsCommandOutput> {
+): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
     imageId: {
@@ -29,12 +29,11 @@ export async function scan(
   });
   const startTime = Date.now();
 
-  do {
+  while (true) {
     try {
-      await client.send(command).then((resp) => {
-        processImageScanFindings(resp, failSeverity);
-      });
-      break;
+      return client
+        .send(command)
+        .then((resp) => processImageScanFindings(resp, failSeverity));
     } catch (err: unknown) {
       if (err instanceof ScanNotFoundException) {
         console.log(`Scan incomplete, retrying in ${delay}ms`);
@@ -42,13 +41,31 @@ export async function scan(
         continue;
       }
     }
-  } while ((Date.now() - startTime) / 1000 < timeout);
-  throw new Error("Scan findings timed out!");
+
+    const runningTime = (Date.now() - startTime) / 1000;
+    if (runningTime >= timeout) {
+      return {
+        errorMessage: `Scan findings timed out after ${runningTime} seconds`,
+      };
+    }
+  }
 }
 
 function processImageScanFindings(
   imageScanFindings: DescribeImageScanFindingsCommandOutput,
   failSeverity: string,
-) {
-  console.log(imageScanFindings.imageScanFindings?.findingSeverityCounts);
+): ScanFindings {
+  const result: ScanFindings = {
+    findingSeverityCounts:
+      imageScanFindings.imageScanFindings!.findingSeverityCounts!,
+  };
+
+  for (const severity in result.findingSeverityCounts) {
+    if (findingSeverities[severity] > findingSeverities[failSeverity]) {
+      break;
+    } else {
+      result.errorMessage = `Found at least 1 vulnerabilty with severity ${failSeverity} or higher`;
+    }
+  }
+  return result;
 }
