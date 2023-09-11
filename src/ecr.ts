@@ -6,20 +6,15 @@ import {
   ImageNotFoundException,
 } from "@aws-sdk/client-ecr";
 import { findingSeverities, ScanFindings } from "./scanner";
+import { setTimeout } from "timers/promises";
 
 const client = new ECRClient({ region: "ap-southeast-2" });
-
-function wait(milliseconds: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-}
 
 export async function scan(
   repository: string,
   tag: string,
   delay: number,
-  max_retries: number,
+  maxRetries: number,
   failSeverity: string,
 ): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
@@ -37,18 +32,18 @@ export async function scan(
         err instanceof ScanNotFoundException ||
         err instanceof ImageNotFoundException
       ) {
-        if (max_retries === 0) {
+        if (maxRetries === 0) {
           return {
             errorMessage: `Failed to retrieve scan findings after max_retries`,
           };
         }
         console.log(`ERROR: ${err.message}`);
         console.log(
-          `Retrying in ${delay}ms. ${max_retries} attempts remaining`,
+          `Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`,
         );
       }
-      return wait(delay).then(() =>
-        scan(repository, tag, delay, max_retries - 1, failSeverity),
+      return setTimeout(delay).then(() =>
+        scan(repository, tag, delay, maxRetries - 1, failSeverity),
       );
     });
 }

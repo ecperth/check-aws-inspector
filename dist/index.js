@@ -28035,13 +28035,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
 const scanner_1 = __nccwpck_require__(83232);
+const promises_1 = __nccwpck_require__(68670);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
-function wait(milliseconds) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, milliseconds);
-    });
-}
-async function scan(repository, tag, delay, max_retries, failSeverity) {
+async function scan(repository, tag, delay, maxRetries, failSeverity) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
@@ -28054,15 +28050,15 @@ async function scan(repository, tag, delay, max_retries, failSeverity) {
         .catch((err) => {
         if (err instanceof client_ecr_1.ScanNotFoundException ||
             err instanceof client_ecr_1.ImageNotFoundException) {
-            if (max_retries === 0) {
+            if (maxRetries === 0) {
                 return {
                     errorMessage: `Failed to retrieve scan findings after max_retries`,
                 };
             }
             console.log(`ERROR: ${err.message}`);
-            console.log(`Retrying in ${delay}ms. ${max_retries} attempts remaining`);
+            console.log(`Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
         }
-        return wait(delay).then(() => scan(repository, tag, delay, max_retries - 1, failSeverity));
+        return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
     });
 }
 exports.scan = scan;
@@ -28116,25 +28112,26 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(42186));
 const ecr_1 = __nccwpck_require__(27918);
 const scanner_1 = __nccwpck_require__(83232);
-try {
-    const repository = core.getInput("repository");
-    const tag = core.getInput("tag");
-    const delay = +core.getInput("delay");
-    const max_retries = +core.getInput("max_retries");
-    const failSeverity = core.getInput("failSeverity");
-    if (scanner_1.findingSeverities[failSeverity] == undefined) {
-        throw new Error(`Invalid severity: ${failSeverity}`);
-    }
-    (0, ecr_1.scan)(repository, tag, delay, max_retries, failSeverity).then((scanFindings) => {
+const promises_1 = __nccwpck_require__(68670);
+const repository = core.getInput("repository");
+const tag = core.getInput("tag");
+const initialDelay = +core.getInput("initial-delay");
+const retryDelay = +core.getInput("retry-delay");
+const maxRetries = +core.getInput("max-retries");
+const failSeverity = core.getInput("fail-severity");
+if (scanner_1.findingSeverities[failSeverity] == undefined) {
+    throw new Error(`Invalid severity: ${failSeverity}`);
+}
+(0, promises_1.setTimeout)(initialDelay).then(() => {
+    (0, ecr_1.scan)(repository, tag, retryDelay, maxRetries, failSeverity)
+        .then((scanFindings) => {
         core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);
         if (scanFindings.errorMessage) {
             core.setFailed(scanFindings.errorMessage);
         }
-    });
-}
-catch (error) {
-    core.setFailed(error.message);
-}
+    })
+        .catch((err) => core.setFailed(err.message));
+});
 
 
 /***/ }),
@@ -28274,6 +28271,14 @@ module.exports = require("process");
 
 "use strict";
 module.exports = require("stream");
+
+/***/ }),
+
+/***/ 68670:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("timers/promises");
 
 /***/ }),
 

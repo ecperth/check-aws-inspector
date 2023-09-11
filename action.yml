@@ -7,16 +7,18 @@ inputs:
   tag:
     description: 'Tag of scanned image'
     required: true
-  delay:
-    description: 'Time in ms between attempt to retrieve scan findings'
-    default: '100'
-  max_retries:
-    description: 'Max total retries to succesfully retrieve scan findings'
-    default: '300'
-  failSeverity: 
+  fail-severity: 
     description: 'The unacceptable severity of any scanned vulnerabilities'
     default: 'CRITICAL'
-    
+  initial-delay:
+    description: 'Time in ms before first attempting to retrieve scan findings'
+    default: '0'
+  retry-delay:
+    description: 'Time in ms between subsequent attempts to retrieve scan findings'
+    default: '500'
+  max-retries:
+    description: 'Max total retries to succesfully retrieve scan findings'
+    default: '10'
 outputs:
   findingSeverityCounts:
     description: 'Counts of scanned vulnerabilities grouped by severity'
