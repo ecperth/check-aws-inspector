@@ -28048,6 +28048,11 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
         .send(command)
         .then((resp) => {
         if (resp.imageScanStatus?.status === "PENDING") {
+            if (maxRetries === 0) {
+                return {
+                    errorMessage: `Failed to retrieve scan findings after max_retries`,
+                };
+            }
             console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
             return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
         }
@@ -28069,6 +28074,7 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
 }
 exports.scan = scan;
 function processImageScanFindings(imageScanFindings, failSeverity) {
+    console.log(imageScanFindings);
     const result = {
         findingSeverityCounts: imageScanFindings.imageScanFindings.findingSeverityCounts,
     };
@@ -28131,6 +28137,7 @@ if (scanner_1.findingSeverities[failSeverity] == undefined) {
 (0, promises_1.setTimeout)(initialDelay).then(() => {
     (0, ecr_1.scan)(repository, tag, retryDelay, maxRetries, failSeverity)
         .then((scanFindings) => {
+        console.log(scanFindings);
         core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);
         if (scanFindings.errorMessage) {
             core.setFailed(scanFindings.errorMessage);

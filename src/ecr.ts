@@ -69,7 +69,7 @@ function processImageScanFindings(
   imageScanFindings: DescribeImageScanFindingsCommandOutput,
   failSeverity: string,
 ): ScanFindings {
-  console.log(imageScanFindings)
+  console.log(imageScanFindings);
   const result: ScanFindings = {
     findingSeverityCounts:
       imageScanFindings.imageScanFindings!.findingSeverityCounts!,
