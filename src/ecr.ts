@@ -2,6 +2,7 @@ import {
   ECRClient,
   DescribeImageScanFindingsCommand,
   DescribeImageScanFindingsCommandOutput,
+  ImageScanStatus,
   ScanNotFoundException,
   ImageNotFoundException,
 } from "@aws-sdk/client-ecr";
@@ -26,7 +27,14 @@ export async function scan(
 
   return client
     .send(command)
-    .then((resp) => processImageScanFindings(resp, failSeverity))
+    .then((resp) => {
+      if (resp.imageScanStatus?.status === "PENDING") {
+        return setTimeout(delay).then(() =>
+          scan(repository, tag, delay, maxRetries - 1, failSeverity),
+        );
+      }
+      return processImageScanFindings(resp, failSeverity);
+    })
     .catch((err) => {
       if (
         err instanceof ScanNotFoundException ||

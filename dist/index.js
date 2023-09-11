@@ -28046,7 +28046,12 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
     });
     return client
         .send(command)
-        .then((resp) => processImageScanFindings(resp, failSeverity))
+        .then((resp) => {
+        if (resp.imageScanStatus?.status === "PENDING") {
+            return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
+        }
+        return processImageScanFindings(resp, failSeverity);
+    })
         .catch((err) => {
         if (err instanceof client_ecr_1.ScanNotFoundException ||
             err instanceof client_ecr_1.ImageNotFoundException) {
