@@ -5,17 +5,18 @@ import { setTimeout } from "timers/promises";
 
 const repository = core.getInput("repository");
 const tag = core.getInput("tag");
+const failSeverity = core.getInput("fail-severity");
 const initialDelay = +core.getInput("initial-delay");
 const retryDelay = +core.getInput("retry-delay");
 const maxRetries = +core.getInput("max-retries");
-const failSeverity = core.getInput("fail-severity");
+const validationDelay = +core.getInput("validation-delay");
 
 if (findingSeverities[failSeverity] == undefined) {
   throw new Error(`Invalid severity: ${failSeverity}`);
 }
 
 setTimeout(initialDelay).then(() => {
-  scan(repository, tag, retryDelay, maxRetries, failSeverity)
+  scan(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
     .then((scanFindings: ScanFindings) => {
       console.log(scanFindings);
       core.setOutput(

@@ -28032,12 +28032,12 @@ exports["default"] = _default;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.scan = void 0;
+exports.verifyScanComplete = exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
 const scanner_1 = __nccwpck_require__(83232);
 const promises_1 = __nccwpck_require__(68670);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
-async function scan(repository, tag, delay, maxRetries, failSeverity) {
+async function scan(repository, tag, failSeverity, delay, maxRetries, validationDelay) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
@@ -28054,9 +28054,9 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
                 };
             }
             console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
-            return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
+            return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, failSeverity, delay, maxRetries - 1, validationDelay));
         }
-        return (0, promises_1.setTimeout)(1000).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
+        return verifyScanComplete(command, failSeverity, validationDelay, resp.imageScanFindings?.findingSeverityCounts);
     })
         .catch((err) => {
         if (err instanceof client_ecr_1.ScanNotFoundException ||
@@ -28069,12 +28069,25 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
             console.log(`ERROR: ${err.message}`);
             console.log(`Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
         }
-        return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
+        return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, failSeverity, delay, maxRetries - 1, validationDelay));
     });
 }
 exports.scan = scan;
+async function verifyScanComplete(command, failSeverity, delay, lastSeverityCounts) {
+    return client.send(command).then((resp) => {
+        console.log(resp.imageScanFindings?.findingSeverityCounts);
+        if (resp.imageScanFindings?.findingSeverityCounts === undefined ||
+            JSON.stringify(resp.imageScanFindings?.findingSeverityCounts) !=
+                JSON.stringify(lastSeverityCounts)) {
+            console.log(`Last result: ${resp.imageScanFindings?.findingSeverityCounts}, "This result: ${lastSeverityCounts}`);
+            console.log(`Keep going...`);
+            return (0, promises_1.setTimeout)(delay).then(() => verifyScanComplete(command, failSeverity, delay, resp.imageScanFindings?.findingSeverityCounts));
+        }
+        return processImageScanFindings(resp, failSeverity);
+    });
+}
+exports.verifyScanComplete = verifyScanComplete;
 function processImageScanFindings(imageScanFindings, failSeverity) {
-    console.log(imageScanFindings);
     const result = {
         findingSeverityCounts: imageScanFindings.imageScanFindings.findingSeverityCounts,
     };
@@ -28127,15 +28140,16 @@ const scanner_1 = __nccwpck_require__(83232);
 const promises_1 = __nccwpck_require__(68670);
 const repository = core.getInput("repository");
 const tag = core.getInput("tag");
+const failSeverity = core.getInput("fail-severity");
 const initialDelay = +core.getInput("initial-delay");
 const retryDelay = +core.getInput("retry-delay");
 const maxRetries = +core.getInput("max-retries");
-const failSeverity = core.getInput("fail-severity");
+const validationDelay = +core.getInput("validation-delay");
 if (scanner_1.findingSeverities[failSeverity] == undefined) {
     throw new Error(`Invalid severity: ${failSeverity}`);
 }
 (0, promises_1.setTimeout)(initialDelay).then(() => {
-    (0, ecr_1.scan)(repository, tag, retryDelay, maxRetries, failSeverity)
+    (0, ecr_1.scan)(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
         .then((scanFindings) => {
         console.log(scanFindings);
         core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);

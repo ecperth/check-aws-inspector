@@ -13,9 +13,10 @@ const client = new ECRClient({ region: "ap-southeast-2" });
 export async function scan(
   repository: string,
   tag: string,
+  failSeverity: string,
   delay: number,
   maxRetries: number,
-  failSeverity: string,
+  validationDelay: number,
 ): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
@@ -39,11 +40,21 @@ export async function scan(
           } attempts remaining`,
         );
         return setTimeout(delay).then(() =>
-          scan(repository, tag, delay, maxRetries - 1, failSeverity),
+          scan(
+            repository,
+            tag,
+            failSeverity,
+            delay,
+            maxRetries - 1,
+            validationDelay,
+          ),
         );
       }
-      return setTimeout(1000).then(() =>
-        scan(repository, tag, delay, maxRetries - 1, failSeverity),
+      return verifyScanComplete(
+        command,
+        failSeverity,
+        validationDelay,
+        resp.imageScanFindings?.findingSeverityCounts,
       );
     })
     .catch((err) => {
@@ -62,16 +73,52 @@ export async function scan(
         );
       }
       return setTimeout(delay).then(() =>
-        scan(repository, tag, delay, maxRetries - 1, failSeverity),
+        scan(
+          repository,
+          tag,
+          failSeverity,
+          delay,
+          maxRetries - 1,
+          validationDelay,
+        ),
       );
     });
+}
+
+export async function verifyScanComplete(
+  command: DescribeImageScanFindingsCommand,
+  failSeverity: string,
+  delay: number,
+  lastSeverityCounts: Record<string, number> | undefined,
+): Promise<ScanFindings> {
+  return client.send(command).then((resp) => {
+    console.log(resp.imageScanFindings?.findingSeverityCounts);
+    if (
+      resp.imageScanFindings?.findingSeverityCounts === undefined ||
+      JSON.stringify(resp.imageScanFindings?.findingSeverityCounts) !=
+        JSON.stringify(lastSeverityCounts)
+    ) {
+      console.log(
+        `Last result: ${resp.imageScanFindings?.findingSeverityCounts}, "This result: ${lastSeverityCounts}`,
+      );
+      console.log(`Keep going...`);
+      return setTimeout(delay).then(() =>
+        verifyScanComplete(
+          command,
+          failSeverity,
+          delay,
+          resp.imageScanFindings?.findingSeverityCounts,
+        ),
+      );
+    }
+    return processImageScanFindings(resp, failSeverity);
+  });
 }
 
 function processImageScanFindings(
   imageScanFindings: DescribeImageScanFindingsCommandOutput,
   failSeverity: string,
 ): ScanFindings {
-  console.log(imageScanFindings);
   const result: ScanFindings = {
     findingSeverityCounts:
       imageScanFindings.imageScanFindings!.findingSeverityCounts!,

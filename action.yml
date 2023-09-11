@@ -19,6 +19,10 @@ inputs:
   max-retries:
     description: 'Max total retries to succesfully retrieve scan findings'
     default: '10'
+  validation-delay:
+    description: 'Time in ms between subsequent attempts to retrieve scan findings'
+    default: '5000'
+
 outputs:
   findingSeverityCounts:
     description: 'Counts of scanned vulnerabilities grouped by severity'
