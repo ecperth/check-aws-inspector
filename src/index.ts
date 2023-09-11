@@ -6,13 +6,13 @@ try {
   const repository = core.getInput("repository");
   const tag = core.getInput("tag");
   const delay = +core.getInput("delay");
-  const timeout = +core.getInput("timeout");
+  const max_retries = +core.getInput("max_retries");
   const failSeverity = core.getInput("failSeverity");
 
   if (findingSeverities[failSeverity] == undefined) {
     throw new Error(`Invalid severity: ${failSeverity}`);
   }
-  scan(repository, tag, delay, timeout, failSeverity).then(
+  scan(repository, tag, delay, max_retries, failSeverity).then(
     (scanFindings: ScanFindings) => {
       core.setOutput(
         "findingSeverityCounts",

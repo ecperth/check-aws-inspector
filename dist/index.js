@@ -28041,34 +28041,29 @@ function wait(milliseconds) {
         setTimeout(resolve, milliseconds);
     });
 }
-async function scan(repository, tag, delay, timeout, failSeverity) {
+async function scan(repository, tag, delay, max_retries, failSeverity) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
             imageTag: tag,
         },
     });
-    const startTime = Date.now();
-    while (true) {
-        try {
-            return client
-                .send(command)
-                .then((resp) => processImageScanFindings(resp, failSeverity));
-        }
-        catch (err) {
-            if (err instanceof client_ecr_1.ScanNotFoundException) {
-                console.log(`Scan incomplete, retrying in ${delay}ms`);
-                await wait(delay);
-                continue;
+    return client
+        .send(command)
+        .then((resp) => processImageScanFindings(resp, failSeverity))
+        .catch((err) => {
+        if (err instanceof client_ecr_1.ScanNotFoundException ||
+            err instanceof client_ecr_1.ImageNotFoundException) {
+            if (max_retries === 0) {
+                return {
+                    errorMessage: `Failed to retrieve scan findings after max_retries`,
+                };
             }
+            console.log(`ERROR: ${err.message}`);
+            console.log(`Retrying in ${delay}ms. ${max_retries} attempts remaining`);
         }
-        const runningTime = (Date.now() - startTime) / 1000;
-        if (runningTime >= timeout) {
-            return {
-                errorMessage: `Scan findings timed out after ${runningTime} seconds`,
-            };
-        }
-    }
+        return wait(delay).then(() => scan(repository, tag, delay, max_retries - 1, failSeverity));
+    });
 }
 exports.scan = scan;
 function processImageScanFindings(imageScanFindings, failSeverity) {
@@ -28125,12 +28120,12 @@ try {
     const repository = core.getInput("repository");
     const tag = core.getInput("tag");
     const delay = +core.getInput("delay");
-    const timeout = +core.getInput("timeout");
+    const max_retries = +core.getInput("max_retries");
     const failSeverity = core.getInput("failSeverity");
     if (scanner_1.findingSeverities[failSeverity] == undefined) {
         throw new Error(`Invalid severity: ${failSeverity}`);
     }
-    (0, ecr_1.scan)(repository, tag, delay, timeout, failSeverity).then((scanFindings) => {
+    (0, ecr_1.scan)(repository, tag, delay, max_retries, failSeverity).then((scanFindings) => {
         core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);
         if (scanFindings.errorMessage) {
             core.setFailed(scanFindings.errorMessage);

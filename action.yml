@@ -10,8 +10,8 @@ inputs:
   delay:
     description: 'Time in ms between attempt to retrieve scan findings'
     default: '100'
-  timeout:
-    description: 'Max total time in seconds to wait for complete scan findings'
+  max_retries:
+    description: 'Max total retries to succesfully retrieve scan findings'
     default: '300'
   failSeverity: 
     description: 'The unacceptable severity of any scanned vulnerabilities'

@@ -3,6 +3,7 @@ import {
   DescribeImageScanFindingsCommand,
   DescribeImageScanFindingsCommandOutput,
   ScanNotFoundException,
+  ImageNotFoundException,
 } from "@aws-sdk/client-ecr";
 import { findingSeverities, ScanFindings } from "./scanner";
 
@@ -18,7 +19,7 @@ export async function scan(
   repository: string,
   tag: string,
   delay: number,
-  timeout: number,
+  max_retries: number,
   failSeverity: string,
 ): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
@@ -27,28 +28,29 @@ export async function scan(
       imageTag: tag,
     },
   });
-  const startTime = Date.now();
 
-  while (true) {
-    try {
-      return client
-        .send(command)
-        .then((resp) => processImageScanFindings(resp, failSeverity));
-    } catch (err: unknown) {
-      if (err instanceof ScanNotFoundException) {
-        console.log(`Scan incomplete, retrying in ${delay}ms`);
-        await wait(delay);
-        continue;
+  return client
+    .send(command)
+    .then((resp) => processImageScanFindings(resp, failSeverity))
+    .catch((err) => {
+      if (
+        err instanceof ScanNotFoundException ||
+        err instanceof ImageNotFoundException
+      ) {
+        if (max_retries === 0) {
+          return {
+            errorMessage: `Failed to retrieve scan findings after max_retries`,
+          };
+        }
+        console.log(`ERROR: ${err.message}`);
+        console.log(
+          `Retrying in ${delay}ms. ${max_retries} attempts remaining`,
+        );
       }
-    }
-
-    const runningTime = (Date.now() - startTime) / 1000;
-    if (runningTime >= timeout) {
-      return {
-        errorMessage: `Scan findings timed out after ${runningTime} seconds`,
-      };
-    }
-  }
+      return wait(delay).then(() =>
+        scan(repository, tag, delay, max_retries - 1, failSeverity),
+      );
+    });
 }
 
 function processImageScanFindings(
