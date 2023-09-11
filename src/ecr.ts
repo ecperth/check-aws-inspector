@@ -42,7 +42,9 @@ export async function scan(
           scan(repository, tag, delay, maxRetries - 1, failSeverity),
         );
       }
-      return processImageScanFindings(resp, failSeverity);
+      return setTimeout(1000).then(() =>
+        scan(repository, tag, delay, maxRetries - 1, failSeverity),
+      );
     })
     .catch((err) => {
       if (

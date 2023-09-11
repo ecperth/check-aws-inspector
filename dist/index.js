@@ -28056,7 +28056,7 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
             console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
             return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
         }
-        return processImageScanFindings(resp, failSeverity);
+        return (0, promises_1.setTimeout)(1000).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
     })
         .catch((err) => {
         if (err instanceof client_ecr_1.ScanNotFoundException ||
