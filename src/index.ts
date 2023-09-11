@@ -17,6 +17,7 @@ if (findingSeverities[failSeverity] == undefined) {
 setTimeout(initialDelay).then(() => {
   scan(repository, tag, retryDelay, maxRetries, failSeverity)
     .then((scanFindings: ScanFindings) => {
+      console.log(scanFindings)
       core.setOutput(
         "findingSeverityCounts",
         scanFindings.findingSeverityCounts,
