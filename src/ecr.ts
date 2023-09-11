@@ -2,7 +2,6 @@ import {
   ECRClient,
   DescribeImageScanFindingsCommand,
   DescribeImageScanFindingsCommandOutput,
-  ImageScanStatus,
   ScanNotFoundException,
   ImageNotFoundException,
 } from "@aws-sdk/client-ecr";
@@ -29,6 +28,11 @@ export async function scan(
     .send(command)
     .then((resp) => {
       if (resp.imageScanStatus?.status === "PENDING") {
+        console.log(
+          `Scan status is "Pending". Retrying in ${delay}ms. ${
+            maxRetries - 1
+          } attempts remaining`,
+        );
         return setTimeout(delay).then(() =>
           scan(repository, tag, delay, maxRetries - 1, failSeverity),
         );

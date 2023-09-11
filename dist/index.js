@@ -28048,6 +28048,7 @@ async function scan(repository, tag, delay, maxRetries, failSeverity) {
         .send(command)
         .then((resp) => {
         if (resp.imageScanStatus?.status === "PENDING") {
+            console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
             return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, delay, maxRetries - 1, failSeverity));
         }
         return processImageScanFindings(resp, failSeverity);
