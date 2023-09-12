@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { scan } from "./ecr";
+import { getImageScanFindings } from "./ecr";
 import { findingSeverities, ScanFindings } from "./scanner";
 import { setTimeout } from "timers/promises";
 
@@ -15,7 +15,7 @@ if (findingSeverities[failSeverity] == undefined) {
   core.setFailed(`Invalid severity: ${failSeverity}`);
 } else {
   setTimeout(initialDelay).then(() => {
-    scan(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
+    getImageScanFindings(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
       .then((scanFindings: ScanFindings) => {
         core.setOutput(
           "findingSeverityCounts",

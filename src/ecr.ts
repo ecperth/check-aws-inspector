@@ -10,7 +10,7 @@ import { setTimeout } from "timers/promises";
 
 const client = new ECRClient({ region: "ap-southeast-2" });
 
-export async function scan(
+export async function getImageScanFindings(
   repository: string,
   tag: string,
   failSeverity: string,
