@@ -13,7 +13,7 @@ const client = new ECRClient({ region: "ap-southeast-2" });
 export async function getImageScanFindings(
   repository: string,
   tag: string,
-  failSeverity: string,
+  failOn: string,
   delay: number,
   remainingRetries: number,
   validationDelay: number,
@@ -38,7 +38,7 @@ export async function getImageScanFindings(
     validationDelay,
     completedScan.findingSeverityCounts,
   );
-  return processImageScanFindings(verifiedScan, failSeverity);
+  return processImageScanFindings(verifiedScan, failOn);
 }
 
 async function pollForScanCompletion(
@@ -114,7 +114,7 @@ async function verifyScanComplete(
 
 function processImageScanFindings(
   imageScanFindings: DescribeImageScanFindingsCommandOutput,
-  failSeverity: string,
+  failOn: string,
 ): ScanFindings {
   const result: ScanFindings = {
     findingSeverityCounts:
@@ -122,10 +122,10 @@ function processImageScanFindings(
   };
 
   for (const severity in result.findingSeverityCounts) {
-    if (findingSeverities[severity] > findingSeverities[failSeverity]) {
+    if (findingSeverities[severity] > findingSeverities[failOn]) {
       break;
     } else {
-      result.errorMessage = `Found at least 1 vulnerabilty with severity ${failSeverity} or higher`;
+      result.errorMessage = `Found at least 1 vulnerabilty with severity ${failOn} or higher`;
     }
   }
   return result;

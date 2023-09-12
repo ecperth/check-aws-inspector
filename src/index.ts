@@ -5,17 +5,17 @@ import { setTimeout } from "timers/promises";
 
 const repository = core.getInput("repository");
 const tag = core.getInput("tag");
-const failSeverity = core.getInput("fail-severity");
+const failOn = core.getInput("fail-on");
 const initialDelay = +core.getInput("initial-delay");
 const retryDelay = +core.getInput("retry-delay");
 const maxRetries = +core.getInput("max-retries");
 const validationDelay = +core.getInput("validation-delay");
 
-if (findingSeverities[failSeverity] == undefined) {
-  core.setFailed(`Invalid severity: ${failSeverity}`);
+if (findingSeverities[failOn] == undefined) {
+  core.setFailed(`Invalid severity: ${failOn}`);
 } else {
   setTimeout(initialDelay).then(() => {
-    getImageScanFindings(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
+    getImageScanFindings(repository, tag, failOn, retryDelay, maxRetries, validationDelay)
       .then((scanFindings: ScanFindings) => {
         core.setOutput(
           "findingSeverityCounts",
