@@ -1,5 +1,5 @@
 {
-  "name": "amazon-inspector-check",
+  "name": "check-aws-inspector",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,15 +12,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ecperth/amazon-inspector-check.git"
+    "url": "git+https://github.com/ecperth/check-aws-inspector.git"
   },
   "keywords": [],
   "author": "ecperth",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ecperth/amazon-inspector-check/issues"
+    "url": "https://github.com/ecperth/check-aws-inspector/issues"
   },
-  "homepage": "https://github.com/ecperth/amazon-inspector-check#readme",
+  "homepage": "https://github.com/ecperth/check-aws-inspector#readme",
   "exports": {
     ".": "./dist/index.js"
   },
@@ -29,7 +29,8 @@
   },
   "dependencies": {
     "@actions/core": "^1.10.0",
-    "@actions/github": "^5.1.1"
+    "@actions/github": "^5.1.1",
+    "@aws-sdk/client-ecr": "^3.409.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.4",
