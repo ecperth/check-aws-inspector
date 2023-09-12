@@ -12,20 +12,19 @@ const maxRetries = +core.getInput("max-retries");
 const validationDelay = +core.getInput("validation-delay");
 
 if (findingSeverities[failSeverity] == undefined) {
-  throw new Error(`Invalid severity: ${failSeverity}`);
+  core.setFailed(`Invalid severity: ${failSeverity}`);
+} else {
+  setTimeout(initialDelay).then(() => {
+    scan(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
+      .then((scanFindings: ScanFindings) => {
+        core.setOutput(
+          "findingSeverityCounts",
+          scanFindings.findingSeverityCounts,
+        );
+        if (scanFindings.errorMessage) {
+          core.setFailed(scanFindings.errorMessage);
+        }
+      })
+      .catch((err) => core.setFailed(err.message));
+  });
 }
-
-setTimeout(initialDelay).then(() => {
-  scan(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
-    .then((scanFindings: ScanFindings) => {
-      console.log(scanFindings);
-      core.setOutput(
-        "findingSeverityCounts",
-        scanFindings.findingSeverityCounts,
-      );
-      if (scanFindings.errorMessage) {
-        core.setFailed(scanFindings.errorMessage);
-      }
-    })
-    .catch((err) => core.setFailed(err.message));
-});

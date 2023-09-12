@@ -15,7 +15,7 @@ export async function scan(
   tag: string,
   failSeverity: string,
   delay: number,
-  maxRetries: number,
+  remainingRetries: number,
   validationDelay: number,
 ): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
@@ -25,93 +25,90 @@ export async function scan(
     },
   });
 
+  const completedScan = await pollForScanCompletion(
+    command,
+    delay,
+    remainingRetries,
+  );
+  if (completedScan.errorMessage) {
+    return completedScan;
+  }
+  const verifiedScan = await verifyScanComplete(
+    command,
+    validationDelay,
+    completedScan.findingSeverityCounts,
+  );
+  return processImageScanFindings(verifiedScan, failSeverity);
+}
+
+async function pollForScanCompletion(
+  command: DescribeImageScanFindingsCommand,
+  delay: number,
+  remainingRetries: number,
+): Promise<ScanFindings> {
   return client
     .send(command)
-    .then((resp) => {
-      if (resp.imageScanStatus?.status === "PENDING") {
-        if (maxRetries === 0) {
-          return {
-            errorMessage: `Failed to retrieve scan findings after max_retries`,
-          };
+    .then(async (resp) => {
+      if (resp.imageScanStatus?.status === "COMPLETE") {
+        return {
+          findingSeverityCounts: resp.imageScanFindings?.findingSeverityCounts,
+        };
+      } else if (resp.imageScanStatus?.status === "PENDING") {
+        if (remainingRetries === 0) {
+          return { errorMessage: `No complete scan after maxRetries` };
         }
+        remainingRetries--;
         console.log(
-          `Scan status is "Pending". Retrying in ${delay}ms. ${
-            maxRetries - 1
-          } attempts remaining`,
+          `Scan status is "Pending". Retrying in ${delay}ms. ${remainingRetries} attempts remaining`,
         );
-        return setTimeout(delay).then(() =>
-          scan(
-            repository,
-            tag,
-            failSeverity,
-            delay,
-            maxRetries - 1,
-            validationDelay,
-          ),
-        );
+        await setTimeout(delay);
+        return pollForScanCompletion(command, delay, remainingRetries);
       }
-      return verifyScanComplete(
-        command,
-        failSeverity,
-        validationDelay,
-        resp.imageScanFindings?.findingSeverityCounts,
-      );
+      return {
+        errorMessage: `unknown status: ${resp.imageScanStatus!.status}`,
+      };
     })
-    .catch((err) => {
+    .catch(async (err: Error) => {
       if (
         err instanceof ScanNotFoundException ||
         err instanceof ImageNotFoundException
       ) {
-        if (maxRetries === 0) {
-          return {
-            errorMessage: `Failed to retrieve scan findings after max_retries`,
-          };
+        if (remainingRetries === 0) {
+          return { errorMessage: `No complete scan after maxRetries` };
         }
+
         console.log(`ERROR: ${err.message}`);
+        remainingRetries--;
         console.log(
-          `Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`,
+          `Retrying in ${delay}ms. ${remainingRetries} attempts remaining`,
         );
+        await setTimeout(delay);
+        return pollForScanCompletion(command, delay, remainingRetries);
       }
-      return setTimeout(delay).then(() =>
-        scan(
-          repository,
-          tag,
-          failSeverity,
-          delay,
-          maxRetries - 1,
-          validationDelay,
-        ),
-      );
+      return { errorMessage: err.message };
     });
 }
 
-export async function verifyScanComplete(
+async function verifyScanComplete(
   command: DescribeImageScanFindingsCommand,
-  failSeverity: string,
   delay: number,
   lastSeverityCounts: Record<string, number> | undefined,
-): Promise<ScanFindings> {
-  return client.send(command).then((resp) => {
-    console.log(resp.imageScanFindings?.findingSeverityCounts);
-    if (
-      resp.imageScanFindings?.findingSeverityCounts === undefined ||
-      JSON.stringify(resp.imageScanFindings?.findingSeverityCounts) !=
-        JSON.stringify(lastSeverityCounts)
+): Promise<DescribeImageScanFindingsCommandOutput> {
+  return client.send(command).then(async (resp) => {
+    const currentSeverityCounts = resp.imageScanFindings?.findingSeverityCounts;
+    console.log("Current severity counts: ", currentSeverityCounts);
+
+    if (currentSeverityCounts === undefined) {
+      await setTimeout(delay);
+      return verifyScanComplete(command, delay, currentSeverityCounts);
+    } else if (
+      lastSeverityCounts === undefined ||
+      !areFindingsEqual(currentSeverityCounts, lastSeverityCounts)
     ) {
-      console.log(
-        `Last result: ${resp.imageScanFindings?.findingSeverityCounts}, "This result: ${lastSeverityCounts}`,
-      );
-      console.log(`Keep going...`);
-      return setTimeout(delay).then(() =>
-        verifyScanComplete(
-          command,
-          failSeverity,
-          delay,
-          resp.imageScanFindings?.findingSeverityCounts,
-        ),
-      );
+      await setTimeout(delay);
+      return verifyScanComplete(command, delay, currentSeverityCounts);
     }
-    return processImageScanFindings(resp, failSeverity);
+    return resp;
   });
 }
 
@@ -132,4 +129,20 @@ function processImageScanFindings(
     }
   }
   return result;
+}
+
+function areFindingsEqual(
+  f1: Record<string, number>,
+  f2: Record<string, number>,
+): boolean {
+  const keys = Object.keys(f1);
+  if (keys.length != Object.keys(f2).length) {
+    return false;
+  }
+  keys.forEach((k) => {
+    if (f1[k] != f2[k]) {
+      return false;
+    }
+  });
+  return true;
 }

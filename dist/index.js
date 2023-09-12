@@ -28032,61 +28032,79 @@ exports["default"] = _default;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.verifyScanComplete = exports.scan = void 0;
+exports.scan = void 0;
 const client_ecr_1 = __nccwpck_require__(8923);
 const scanner_1 = __nccwpck_require__(83232);
 const promises_1 = __nccwpck_require__(68670);
 const client = new client_ecr_1.ECRClient({ region: "ap-southeast-2" });
-async function scan(repository, tag, failSeverity, delay, maxRetries, validationDelay) {
+async function scan(repository, tag, failSeverity, delay, remainingRetries, validationDelay) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
             imageTag: tag,
         },
     });
-    return client
-        .send(command)
-        .then((resp) => {
-        if (resp.imageScanStatus?.status === "PENDING") {
-            if (maxRetries === 0) {
-                return {
-                    errorMessage: `Failed to retrieve scan findings after max_retries`,
-                };
-            }
-            console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
-            return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, failSeverity, delay, maxRetries - 1, validationDelay));
-        }
-        return verifyScanComplete(command, failSeverity, validationDelay, resp.imageScanFindings?.findingSeverityCounts);
-    })
-        .catch((err) => {
-        if (err instanceof client_ecr_1.ScanNotFoundException ||
-            err instanceof client_ecr_1.ImageNotFoundException) {
-            if (maxRetries === 0) {
-                return {
-                    errorMessage: `Failed to retrieve scan findings after max_retries`,
-                };
-            }
-            console.log(`ERROR: ${err.message}`);
-            console.log(`Retrying in ${delay}ms. ${maxRetries - 1} attempts remaining`);
-        }
-        return (0, promises_1.setTimeout)(delay).then(() => scan(repository, tag, failSeverity, delay, maxRetries - 1, validationDelay));
-    });
+    const completedScan = await pollForScanCompletion(command, delay, remainingRetries);
+    if (completedScan.errorMessage) {
+        return completedScan;
+    }
+    const verifiedScan = await verifyScanComplete(command, validationDelay, completedScan.findingSeverityCounts);
+    return processImageScanFindings(verifiedScan, failSeverity);
 }
 exports.scan = scan;
-async function verifyScanComplete(command, failSeverity, delay, lastSeverityCounts) {
-    return client.send(command).then((resp) => {
-        console.log(resp.imageScanFindings?.findingSeverityCounts);
-        if (resp.imageScanFindings?.findingSeverityCounts === undefined ||
-            JSON.stringify(resp.imageScanFindings?.findingSeverityCounts) !=
-                JSON.stringify(lastSeverityCounts)) {
-            console.log(`Last result: ${resp.imageScanFindings?.findingSeverityCounts}, "This result: ${lastSeverityCounts}`);
-            console.log(`Keep going...`);
-            return (0, promises_1.setTimeout)(delay).then(() => verifyScanComplete(command, failSeverity, delay, resp.imageScanFindings?.findingSeverityCounts));
+async function pollForScanCompletion(command, delay, remainingRetries) {
+    return client
+        .send(command)
+        .then(async (resp) => {
+        if (resp.imageScanStatus?.status === "COMPLETE") {
+            return {
+                findingSeverityCounts: resp.imageScanFindings?.findingSeverityCounts,
+            };
         }
-        return processImageScanFindings(resp, failSeverity);
+        else if (resp.imageScanStatus?.status === "PENDING") {
+            if (remainingRetries === 0) {
+                return { errorMessage: `No complete scan after maxRetries` };
+            }
+            remainingRetries--;
+            console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${remainingRetries} attempts remaining`);
+            await (0, promises_1.setTimeout)(delay);
+            return pollForScanCompletion(command, delay, remainingRetries);
+        }
+        return {
+            errorMessage: `unknown status: ${resp.imageScanStatus.status}`,
+        };
+    })
+        .catch(async (err) => {
+        if (err instanceof client_ecr_1.ScanNotFoundException ||
+            err instanceof client_ecr_1.ImageNotFoundException) {
+            if (remainingRetries === 0) {
+                return { errorMessage: `No complete scan after maxRetries` };
+            }
+            console.log(`ERROR: ${err.message}`);
+            remainingRetries--;
+            console.log(`Retrying in ${delay}ms. ${remainingRetries} attempts remaining`);
+            await (0, promises_1.setTimeout)(delay);
+            return pollForScanCompletion(command, delay, remainingRetries);
+        }
+        return { errorMessage: err.message };
     });
 }
-exports.verifyScanComplete = verifyScanComplete;
+async function verifyScanComplete(command, delay, lastSeverityCounts) {
+    return client.send(command).then(async (resp) => {
+        const currentSeverityCounts = resp.imageScanFindings?.findingSeverityCounts;
+        console.log("Current severity counts: ", currentSeverityCounts);
+        if (currentSeverityCounts === undefined) {
+            await (0, promises_1.setTimeout)(delay);
+            return verifyScanComplete(command, delay, currentSeverityCounts);
+        }
+        else if (lastSeverityCounts === undefined ||
+            !areFindingsEqual(currentSeverityCounts, lastSeverityCounts)) {
+            await (0, promises_1.setTimeout)(delay);
+            return verifyScanComplete(command, delay, currentSeverityCounts);
+        }
+        return resp;
+    });
+}
 function processImageScanFindings(imageScanFindings, failSeverity) {
     const result = {
         findingSeverityCounts: imageScanFindings.imageScanFindings.findingSeverityCounts,
@@ -28100,6 +28118,18 @@ function processImageScanFindings(imageScanFindings, failSeverity) {
         }
     }
     return result;
+}
+function areFindingsEqual(f1, f2) {
+    const keys = Object.keys(f1);
+    if (keys.length != Object.keys(f2).length) {
+        return false;
+    }
+    keys.forEach((k) => {
+        if (f1[k] != f2[k]) {
+            return false;
+        }
+    });
+    return true;
 }
 
 
@@ -28146,19 +28176,20 @@ const retryDelay = +core.getInput("retry-delay");
 const maxRetries = +core.getInput("max-retries");
 const validationDelay = +core.getInput("validation-delay");
 if (scanner_1.findingSeverities[failSeverity] == undefined) {
-    throw new Error(`Invalid severity: ${failSeverity}`);
+    core.setFailed(`Invalid severity: ${failSeverity}`);
 }
-(0, promises_1.setTimeout)(initialDelay).then(() => {
-    (0, ecr_1.scan)(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
-        .then((scanFindings) => {
-        console.log(scanFindings);
-        core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);
-        if (scanFindings.errorMessage) {
-            core.setFailed(scanFindings.errorMessage);
-        }
-    })
-        .catch((err) => core.setFailed(err.message));
-});
+else {
+    (0, promises_1.setTimeout)(initialDelay).then(() => {
+        (0, ecr_1.scan)(repository, tag, failSeverity, retryDelay, maxRetries, validationDelay)
+            .then((scanFindings) => {
+            core.setOutput("findingSeverityCounts", scanFindings.findingSeverityCounts);
+            if (scanFindings.errorMessage) {
+                core.setFailed(scanFindings.errorMessage);
+            }
+        })
+            .catch((err) => core.setFailed(err.message));
+    });
+}
 
 
 /***/ }),
