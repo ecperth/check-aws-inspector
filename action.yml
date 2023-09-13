@@ -15,11 +15,11 @@ inputs:
   max-retries:
     description: 'Max total retries to succesfully retrieve scan findings'
     required: true
-  retry-delay:
+  delay:
     description: 'Time in ms between subsequent attempts to retrieve scan findings'
     required: true
-  validation-delay:
-    description: 'Time in ms between subsequent attempts to retrieve scan findings'
+  consistency-delay:
+    description: 'Time in ms between subsequent attempts to retrieve consistent scan findings'
     required: true
 
 outputs:

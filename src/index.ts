@@ -7,18 +7,18 @@ const tag = core.getInput('tag', { required: true });
 const failOn = core.getInput('fail-on');
 const ignore = core.getInput('ignore');
 const maxRetries = core.getInput('max-retries', { required: true });
-const retryDelay = core.getInput('retry-delay', { required: true });
+const delay = core.getInput('delay', { required: true });
 const consistencyDelay = core.getInput('consistency-delay', { required: true });
 
 const ignoreList = '' ? [] : ignore.trim().replace(/\n|\s/g, ',').split(',');
 
-if (validateInput(failOn, maxRetries, retryDelay, consistencyDelay)) {
+if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
   getImageScanFindings(
     repository,
     tag,
     failOn,
     ignoreList,
-    +retryDelay,
+    +delay,
     +maxRetries,
     +consistencyDelay,
   )
@@ -37,7 +37,7 @@ if (validateInput(failOn, maxRetries, retryDelay, consistencyDelay)) {
 function validateInput(
   failOn: string,
   maxRetries: string,
-  retryDelay: string,
+  delay: string,
   consistencyDelay: string,
 ) {
   if (findingSeverities[failOn] == undefined) {
@@ -46,8 +46,8 @@ function validateInput(
   } else if (!Number.isInteger(maxRetries)) {
     core.setFailed(`Invalid maxRetries: ${maxRetries}. Must be an integer`);
     return false;
-  } else if (!Number.isInteger(retryDelay)) {
-    core.setFailed(`Invalid retryDelay: ${retryDelay}. Must be an integer`);
+  } else if (!Number.isInteger(delay)) {
+    core.setFailed(`Invalid delay: ${delay}. Must be an integer`);
     return false;
   } else if (!Number.isInteger(consistencyDelay)) {
     core.setFailed(

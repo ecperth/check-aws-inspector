@@ -28266,11 +28266,11 @@ const tag = core.getInput('tag', { required: true });
 const failOn = core.getInput('fail-on');
 const ignore = core.getInput('ignore');
 const maxRetries = core.getInput('max-retries', { required: true });
-const retryDelay = core.getInput('retry-delay', { required: true });
+const delay = core.getInput('delay', { required: true });
 const consistencyDelay = core.getInput('consistency-delay', { required: true });
 const ignoreList =  false ? 0 : ignore.trim().replace(/\n|\s/g, ',').split(',');
-if (validateInput(failOn, maxRetries, retryDelay, consistencyDelay)) {
-    (0, ecr_1.getImageScanFindings)(repository, tag, failOn, ignoreList, +retryDelay, +maxRetries, +consistencyDelay)
+if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
+    (0, ecr_1.getImageScanFindings)(repository, tag, failOn, ignoreList, +delay, +maxRetries, +consistencyDelay)
         .then((scanFindings) => {
         core.setOutput('findingSeverityCounts', scanFindings.findingSeverityCounts);
         if (scanFindings.errorMessage) {
@@ -28279,7 +28279,7 @@ if (validateInput(failOn, maxRetries, retryDelay, consistencyDelay)) {
     })
         .catch((err) => core.setFailed(err.message));
 }
-function validateInput(failOn, maxRetries, retryDelay, consistencyDelay) {
+function validateInput(failOn, maxRetries, delay, consistencyDelay) {
     if (scanner_1.findingSeverities[failOn] == undefined) {
         core.setFailed(`Invalid failOn: ${failOn}`);
         return false;
@@ -28288,8 +28288,8 @@ function validateInput(failOn, maxRetries, retryDelay, consistencyDelay) {
         core.setFailed(`Invalid maxRetries: ${maxRetries}. Must be an integer`);
         return false;
     }
-    else if (!Number.isInteger(retryDelay)) {
-        core.setFailed(`Invalid retryDelay: ${retryDelay}. Must be an integer`);
+    else if (!Number.isInteger(delay)) {
+        core.setFailed(`Invalid delay: ${delay}. Must be an integer`);
         return false;
     }
     else if (!Number.isInteger(consistencyDelay)) {
