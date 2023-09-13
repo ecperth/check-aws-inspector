@@ -28284,18 +28284,19 @@ function validateInput(failOn, maxRetries, delay, consistencyDelay) {
         core.setFailed(`Invalid failOn: ${failOn}`);
         return false;
     }
-    else if (!Number.isInteger(maxRetries)) {
+    else if (isNaN(+maxRetries) || !Number.isInteger(+maxRetries)) {
         core.setFailed(`Invalid maxRetries: ${maxRetries}. Must be an integer`);
         return false;
     }
-    else if (!Number.isInteger(delay)) {
+    else if (isNaN(+delay) || !Number.isInteger(+delay)) {
         core.setFailed(`Invalid delay: ${delay}. Must be an integer`);
         return false;
     }
-    else if (!Number.isInteger(consistencyDelay)) {
+    else if (isNaN(+consistencyDelay) || !Number.isInteger(+consistencyDelay)) {
         core.setFailed(`Invalid consistencyDelay: ${consistencyDelay}. Must be an integer`);
         return false;
     }
+    return true;
 }
 
 
