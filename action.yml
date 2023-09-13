@@ -1,5 +1,6 @@
-name: 'Amazon Insepctor Check'
+name: 'AWS Insepctor Check'
 description: 'Check results of amazon inspect on image'
+
 inputs:
   repository:
     description: 'Repository name'
@@ -7,21 +8,19 @@ inputs:
   tag:
     description: 'Tag of scanned image'
     required: true
-  fail-severity: 
+  fail-on: 
     description: 'The unacceptable severity of any scanned vulnerabilities'
-    default: 'CRITICAL'
-  initial-delay:
-    description: 'Time in ms before first attempting to retrieve scan findings'
-    default: '0'
-  retry-delay:
-    description: 'Time in ms between subsequent attempts to retrieve scan findings'
-    default: '500'
+  ignore: 
+    description: 'The vulnerabilities to ignore'
   max-retries:
     description: 'Max total retries to succesfully retrieve scan findings'
-    default: '10'
+    required: true
+  retry-delay:
+    description: 'Time in ms between subsequent attempts to retrieve scan findings'
+    required: true
   validation-delay:
     description: 'Time in ms between subsequent attempts to retrieve scan findings'
-    default: '5000'
+    required: true
 
 outputs:
   findingSeverityCounts:
