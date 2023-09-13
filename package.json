@@ -27,9 +27,13 @@
   "engines": {
     "node": ">=16"
   },
+  "prettier": {
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true
+  },
   "dependencies": {
     "@actions/core": "^1.10.0",
-    "@actions/github": "^5.1.1",
     "@aws-sdk/client-ecr": "^3.409.0"
   },
   "devDependencies": {
