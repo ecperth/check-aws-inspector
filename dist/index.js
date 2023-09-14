@@ -28105,7 +28105,7 @@ async function pollForScanCompletion(command, delay, timeout) {
         try {
             const resp = await client.send(command);
             if (resp.imageScanStatus?.status === 'COMPLETE') {
-                console.log(`scan complete!`);
+                console.log(`Scan complete!`);
                 return;
             }
             else if (resp.imageScanStatus?.status === 'PENDING') {
@@ -28139,6 +28139,7 @@ async function pollForConsistency(command, delay) {
         const currentResult = await getAllSeverityCounts(command);
         console.log(currentResult);
         if (previousResult && areFindingsEqual(currentResult, previousResult)) {
+            console.log('Consistent Results!');
             return currentResult;
         }
         console.log('Polling for consitency...');
