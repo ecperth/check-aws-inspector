@@ -28037,17 +28037,17 @@ const client_ecr_1 = __nccwpck_require__(8923);
 const scanner_1 = __nccwpck_require__(83232);
 const promises_1 = __nccwpck_require__(68670);
 const client = new client_ecr_1.ECRClient();
+const POLL_RATE = 5000;
 /**
  * @param {string} repository - ECR repo name
  * @param {tag} tag - Image tag
  * @param {string} failOn - Severity to cause failure
  * @param {string[]} ignore - VulnerabilityIds to ignore
- * @param {string} delay - Time in ms between polls for completion
- * @param {string} retries - Number of retries before failing
- * @param {string} consistencyDelay - Time in ms between polls for consistency
+ * @param {string} timeout - Time in seconds for scan to complete before failure
+ * @param {string} consistencyDelay - Time in seconds between polls for consistency
  * @returns {Promise<ScanFindings>}
  */
-async function getImageScanFindings(repository, tag, failOn, ignore, delay, retries, consistencyDelay) {
+async function getImageScanFindings(repository, tag, failOn, ignore, timeout, consistencyDelay) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
@@ -28055,37 +28055,40 @@ async function getImageScanFindings(repository, tag, failOn, ignore, delay, retr
         },
     });
     // Poll with delay untill we get 'COMPLETE' status.
-    const completedScan = await pollForScanCompletion(command, delay, retries);
-    if (completedScan.errorMessage) {
-        return completedScan;
+    try {
+        await pollForScanCompletion(command, POLL_RATE, timeout);
     }
-    // Poll with validationDelay untill we get consistent data
-    await (0, promises_1.setTimeout)(consistencyDelay);
-    const findingSeverityCounts = await pollForConsistency(command, consistencyDelay, completedScan.findingSeverityCounts);
+    catch (err) {
+        if (err instanceof Error) {
+            return { errorMessage: err.message };
+        }
+    }
+    // Poll with consistencyDelay untill we get consistent data
+    const findingSeverityCounts = await pollForConsistency(command, consistencyDelay * 1000);
     // No findings
     if (!findingSeverityCounts) {
         return {};
     }
-    // No vulnerability > onFail or failOn not provided
+    // No vulnerability > failOn or failOn not provided
     if (!failOn ||
-        !doesContainOnFailVulnerabilty(findingSeverityCounts, failOn)) {
+        !doesContainFailOnVulnerabilty(findingSeverityCounts, failOn)) {
         return { findingSeverityCounts: findingSeverityCounts };
     }
-    // Vulnerability > onFail found and no ignores provided
+    // Vulnerability > failOn found and no ignores provided
     if (ignore.length === 0) {
         return {
             findingSeverityCounts: findingSeverityCounts,
             errorMessage: `Found vulnerabilty with severity of ${failOn} or greater.`,
         };
     }
-    // Vulnerability > onFail found after excluded ignores
-    if (await doesContainNotIgnoredOnFailVulnerabilty(command, { ...findingSeverityCounts }, failOn, [...ignore])) {
+    // Vulnerability > failOn found after excluded ignores
+    if (await doesContainNotIgnoredFailOnVulnerabilty(command, { ...findingSeverityCounts }, failOn, [...ignore])) {
         return {
             findingSeverityCounts: findingSeverityCounts,
             errorMessage: `Found vulnerabilty with severity of ${failOn} or greater.`,
         };
     }
-    // Excluding ignores no Vulnerability onFail
+    // Excluding ignores no Vulnerability failOn
     return {
         findingSeverityCounts: findingSeverityCounts,
     };
@@ -28093,44 +28096,36 @@ async function getImageScanFindings(repository, tag, failOn, ignore, delay, retr
 exports.getImageScanFindings = getImageScanFindings;
 /**
  * Continues to send the provided command untill getting a 'COMPLETE' status
- * or retries are exhausted.
+ * or timeout is reached.
  */
-async function pollForScanCompletion(command, delay, retries) {
-    return client
-        .send(command)
-        .then(async (resp) => {
-        if (resp.imageScanStatus?.status === 'COMPLETE') {
-            return {
-                findingSeverityCounts: resp.imageScanFindings?.findingSeverityCounts,
-            };
-        }
-        else if (resp.imageScanStatus?.status === 'PENDING') {
-            if (retries === 0) {
-                return { errorMessage: `No complete scan after maxRetries` };
+async function pollForScanCompletion(command, delay, timeout) {
+    const timeoutMs = Date.now() + timeout * 1000;
+    do {
+        console.log(`Polling for complete scan...`);
+        try {
+            const resp = await client.send(command);
+            if (resp.imageScanStatus?.status === 'COMPLETE') {
+                console.log(`scan complete!`);
+                return;
             }
-            retries--;
-            console.log(`Scan status is "Pending". Retrying in ${delay}ms. ${retries} attempts remaining`);
-            await (0, promises_1.setTimeout)(delay);
-            return pollForScanCompletion(command, delay, retries);
-        }
-        return {
-            errorMessage: `unknown status: ${resp.imageScanStatus.status}`,
-        };
-    })
-        .catch(async (err) => {
-        if (err instanceof client_ecr_1.ScanNotFoundException ||
-            err instanceof client_ecr_1.ImageNotFoundException) {
-            if (retries === 0) {
-                return { errorMessage: `No complete scan after maxRetries` };
+            else if (resp.imageScanStatus?.status === 'PENDING') {
+                console.log(`Scan status is "Pending"`);
             }
-            retries--;
-            console.log(`ERROR: ${err.message}`);
-            console.log(`Retrying in ${delay}ms. ${retries} attempts remaining`);
-            await (0, promises_1.setTimeout)(delay);
-            return pollForScanCompletion(command, delay, retries);
+            else {
+                throw new Error(`Unknown status: ${resp.imageScanStatus.status}`);
+            }
         }
-        return { errorMessage: err.message };
-    });
+        catch (err) {
+            if (err instanceof client_ecr_1.ScanNotFoundException) {
+                console.log(`ERROR: ${err.message}`);
+            }
+            else {
+                throw err;
+            }
+        }
+        await (0, promises_1.setTimeout)(delay);
+    } while (Date.now() < timeoutMs);
+    throw new Error(`No complete scan after ${timeout} seconds`);
 }
 /**
  * Continues to call getAllSeverityCounts untill getting
@@ -28138,20 +28133,18 @@ async function pollForScanCompletion(command, delay, retries) {
  * api returns a status of COMPLETE, results continue to be be slowly updated
  * for a few seconds after
  */
-async function pollForConsistency(command, delay, previousResult) {
-    console.log('Severity counts: ', previousResult);
-    return getAllSeverityCounts(command).then(async (currentResult) => {
-        if (currentResult === undefined) {
-            await (0, promises_1.setTimeout)(delay);
-            return pollForConsistency(command, delay, currentResult);
+async function pollForConsistency(command, delay) {
+    let previousResult = undefined;
+    while (true) {
+        const currentResult = await getAllSeverityCounts(command);
+        console.log(currentResult);
+        if (previousResult && areFindingsEqual(currentResult, previousResult)) {
+            return currentResult;
         }
-        else if (previousResult === undefined ||
-            !areFindingsEqual(currentResult, previousResult)) {
-            await (0, promises_1.setTimeout)(delay);
-            return pollForConsistency(command, delay, currentResult);
-        }
-        return currentResult;
-    });
+        console.log('Polling for consitency...');
+        previousResult = currentResult;
+        await (0, promises_1.setTimeout)(delay);
+    }
 }
 /**
  * Continues to send the provided command with the previous nextToken
@@ -28184,27 +28177,27 @@ async function getAllSeverityCounts(command) {
  * Processes vulnerabilites in pages untill they are exhausted or all
  * items in the ignore list have been processed.
  */
-async function doesContainNotIgnoredOnFailVulnerabilty(command, findingSeverityCounts, failOn, ignore) {
+async function doesContainNotIgnoredFailOnVulnerabilty(command, findingSeverityCounts, failOn, ignore) {
     do {
         const resp = await client.send(command);
         resp.imageScanFindings?.enhancedFindings?.forEach((vulnerabilty) => {
-            const i = ignore.indexOf(vulnerabilty.packageVulnerabilityDetails.vulnerabilityId);
-            if (i >= 0) {
+            const ignoreIndex = ignore.indexOf(vulnerabilty.packageVulnerabilityDetails.vulnerabilityId);
+            if (ignoreIndex >= 0) {
                 console.log(`Vulnerability ${vulnerabilty.packageVulnerabilityDetails
                     .vulnerabilityId} is ignored. Decrementing the ${vulnerabilty.severity} severity count.`);
                 findingSeverityCounts[vulnerabilty.severity] =
                     findingSeverityCounts[vulnerabilty.severity] - 1;
-                ignore.splice(i, 1);
-                if (!doesContainOnFailVulnerabilty(findingSeverityCounts, failOn)) {
+                ignore.splice(ignoreIndex, 1);
+                if (!doesContainFailOnVulnerabilty(findingSeverityCounts, failOn)) {
                     return false;
                 }
             }
             command.input.nextToken = resp.nextToken;
         });
     } while (command.input.nextToken && ignore.length > 0);
-    return doesContainOnFailVulnerabilty(findingSeverityCounts, failOn);
+    return doesContainFailOnVulnerabilty(findingSeverityCounts, failOn);
 }
-function doesContainOnFailVulnerabilty(findingSeverityCounts, failOn) {
+function doesContainFailOnVulnerabilty(findingSeverityCounts, failOn) {
     for (const severity in findingSeverityCounts) {
         if (scanner_1.findingSeverities[severity] <= scanner_1.findingSeverities[failOn] &&
             findingSeverityCounts[severity] > 0) {
@@ -28261,16 +28254,17 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(42186));
 const ecr_1 = __nccwpck_require__(27918);
 const scanner_1 = __nccwpck_require__(83232);
-const repository = core.getInput('repository', { required: true });
-const tag = core.getInput('tag', { required: true });
-const failOn = core.getInput('fail-on');
-const ignore = core.getInput('ignore');
-const maxRetries = core.getInput('max-retries', { required: true });
-const delay = core.getInput('delay', { required: true });
-const consistencyDelay = core.getInput('consistency-delay', { required: true });
-const ignoreList =  false ? 0 : ignore.trim().replace(/\n|\s/g, ',').split(',');
-if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
-    (0, ecr_1.getImageScanFindings)(repository, tag, failOn, ignoreList, +delay, +maxRetries, +consistencyDelay)
+const repository = core.getInput('repository', { required: true }).trim();
+const tag = core.getInput('tag', { required: true }).trim();
+const failOn = core.getInput('fail-on').trim().toUpperCase();
+const ignore = core.getInput('ignore').trim();
+const timeout = core.getInput('timeout', { required: true }).trim();
+const consistencyDelay = core
+    .getInput('consistency-delay', { required: true })
+    .trim();
+const ignoreList =  false ? 0 : ignore.replace(/\n|\s/g, ',').split(',');
+if (validateInput(failOn, timeout, consistencyDelay)) {
+    (0, ecr_1.getImageScanFindings)(repository, tag, failOn, ignoreList, +timeout, +consistencyDelay)
         .then((scanFindings) => {
         core.setOutput('findingSeverityCounts', scanFindings.findingSeverityCounts);
         if (scanFindings.errorMessage) {
@@ -28279,21 +28273,17 @@ if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
     })
         .catch((err) => core.setFailed(err.message));
 }
-function validateInput(failOn, maxRetries, delay, consistencyDelay) {
+function validateInput(failOn, timeout, consistencyDelay) {
     if (scanner_1.findingSeverities[failOn] == undefined) {
-        core.setFailed(`Invalid failOn: ${failOn}`);
+        core.setFailed(`Invalid fail-on: ${failOn}`);
         return false;
     }
-    else if (isNaN(+maxRetries) || !Number.isInteger(+maxRetries)) {
-        core.setFailed(`Invalid maxRetries: ${maxRetries}. Must be an integer`);
-        return false;
-    }
-    else if (isNaN(+delay) || !Number.isInteger(+delay)) {
-        core.setFailed(`Invalid delay: ${delay}. Must be an integer`);
+    else if (isNaN(+timeout) || !Number.isInteger(+timeout)) {
+        core.setFailed(`Invalid timeout: ${timeout}. Must be an integer`);
         return false;
     }
     else if (isNaN(+consistencyDelay) || !Number.isInteger(+consistencyDelay)) {
-        core.setFailed(`Invalid consistencyDelay: ${consistencyDelay}. Must be an integer`);
+        core.setFailed(`Invalid consistency-delay: ${consistencyDelay}. Must be an integer`);
         return false;
     }
     return true;

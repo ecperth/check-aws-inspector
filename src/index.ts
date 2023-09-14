@@ -2,24 +2,24 @@ import * as core from '@actions/core';
 import { getImageScanFindings } from './ecr';
 import { findingSeverities, ScanFindings } from './scanner';
 
-const repository = core.getInput('repository', { required: true });
-const tag = core.getInput('tag', { required: true });
-const failOn = core.getInput('fail-on');
-const ignore = core.getInput('ignore');
-const maxRetries = core.getInput('max-retries', { required: true });
-const delay = core.getInput('delay', { required: true });
-const consistencyDelay = core.getInput('consistency-delay', { required: true });
+const repository = core.getInput('repository', { required: true }).trim();
+const tag = core.getInput('tag', { required: true }).trim();
+const failOn = core.getInput('fail-on').trim().toUpperCase();
+const ignore = core.getInput('ignore').trim();
+const timeout = core.getInput('timeout', { required: true }).trim();
+const consistencyDelay = core
+  .getInput('consistency-delay', { required: true })
+  .trim();
 
-const ignoreList = '' ? [] : ignore.trim().replace(/\n|\s/g, ',').split(',');
+const ignoreList = '' ? [] : ignore.replace(/\n|\s/g, ',').split(',');
 
-if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
+if (validateInput(failOn, timeout, consistencyDelay)) {
   getImageScanFindings(
     repository,
     tag,
     failOn,
     ignoreList,
-    +delay,
-    +maxRetries,
+    +timeout,
     +consistencyDelay,
   )
     .then((scanFindings: ScanFindings) => {
@@ -36,22 +36,18 @@ if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
 
 function validateInput(
   failOn: string,
-  maxRetries: string,
-  delay: string,
+  timeout: string,
   consistencyDelay: string,
 ): boolean {
   if (findingSeverities[failOn] == undefined) {
-    core.setFailed(`Invalid failOn: ${failOn}`);
+    core.setFailed(`Invalid fail-on: ${failOn}`);
     return false;
-  } else if (isNaN(+maxRetries) || !Number.isInteger(+maxRetries)) {
-    core.setFailed(`Invalid maxRetries: ${maxRetries}. Must be an integer`);
-    return false;
-  } else if (isNaN(+delay) || !Number.isInteger(+delay)) {
-    core.setFailed(`Invalid delay: ${delay}. Must be an integer`);
+  } else if (isNaN(+timeout) || !Number.isInteger(+timeout)) {
+    core.setFailed(`Invalid timeout: ${timeout}. Must be an integer`);
     return false;
   } else if (isNaN(+consistencyDelay) || !Number.isInteger(+consistencyDelay)) {
     core.setFailed(
-      `Invalid consistencyDelay: ${consistencyDelay}. Must be an integer`,
+      `Invalid consistency-delay: ${consistencyDelay}. Must be an integer`,
     );
     return false;
   }

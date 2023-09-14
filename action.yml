@@ -12,14 +12,11 @@ inputs:
     description: 'The unacceptable severity of any scanned vulnerabilities'
   ignore: 
     description: 'The vulnerabilities to ignore'
-  max-retries:
-    description: 'Max total retries to succesfully retrieve scan findings'
-    required: true
-  delay:
-    description: 'Time in ms between subsequent attempts to retrieve scan findings'
+  timeout:
+    description: 'Time in seconds before timing out when polling for scan complete status'
     required: true
   consistency-delay:
-    description: 'Time in ms between subsequent attempts to retrieve consistent scan findings'
+    description: 'Time in seconds between subsequent attempts to retrieve consistent scan findings'
     required: true
 
 outputs:
