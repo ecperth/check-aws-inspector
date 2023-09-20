@@ -1,4 +1,7 @@
-![Test Coverage](badges/coverage.svg)
+
+<p align="center">
+  <img src="badges/coverage.svg">
+</p>
 
 ## Usage ##
 ```
