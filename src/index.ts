@@ -4,58 +4,58 @@ import { findingSeverities, ScanFindings } from './scanner';
 
 run();
 export async function run(){
-  const repository = core.getInput('repository', { required: true });
-  const tag = core.getInput('tag', { required: true });
-  const failOn = core.getInput('fail-on');
-  const ignore = core.getInput('ignore');
-  const maxRetries = core.getInput('max-retries', { required: true });
-  const delay = core.getInput('delay', { required: true });
-  const consistencyDelay = core.getInput('consistency-delay', { required: true });
-  
-  const ignoreList = '' ? [] : ignore.trim().replace(/\n|\s/g, ',').split(',');
+  const repository = core.getInput('repository', { required: true }).trim();
+  const tag = core.getInput('tag', { required: true }).trim();
+  const failOn = core.getInput('fail-on').trim().toUpperCase();
+  const ignore = core.getInput('ignore').trim();
+  const timeout = core.getInput('timeout', { required: true }).trim();
+  const consistencyDelay = core
+    .getInput('consistency-delay', { required: true })
+    .trim();
 
-  if (validateInput(failOn, maxRetries, delay, consistencyDelay)) {
-    try {
-      const scanFindings = await getImageScanFindings(
+  const ignoreList = '' ? [] : ignore.replace(/\n|\s/g, ',').split(',');
+  
+  if (validateInput(failOn, timeout, consistencyDelay)) {
+    try{
+      const scanFindings : ScanFindings = await getImageScanFindings(
         repository,
         tag,
         failOn,
         ignoreList,
-        +delay,
-        +maxRetries,
+        +timeout,
         +consistencyDelay,
       )
-      core.setOutput('findingSeverityCounts', scanFindings.findingSeverityCounts);
+      core.setOutput(
+        'findingSeverityCounts',
+        scanFindings.findingSeverityCounts,
+      );
       if (scanFindings.errorMessage) {
         core.setFailed(scanFindings.errorMessage);
       }
-      } catch (err){
-        if (err instanceof Error){
-          core.setFailed(err.message)
-        }
+    } catch (err){
+      if (err instanceof Error){
+        core.setFailed(err.message)
       }
-    } 
+    }
   }
+}
 
 function validateInput(
   failOn: string,
-  maxRetries: string,
-  delay: string,
+  timeout: string,
   consistencyDelay: string,
-) {
+): boolean {
   if (findingSeverities[failOn] == undefined) {
-    core.setFailed(`Invalid failOn: ${failOn}`);
+    core.setFailed(`Invalid fail-on: ${failOn}`);
     return false;
-  } else if (!Number.isInteger(maxRetries)) {
-    core.setFailed(`Invalid maxRetries: ${maxRetries}. Must be an integer`);
+  } else if (isNaN(+timeout) || !Number.isInteger(+timeout)) {
+    core.setFailed(`Invalid timeout: ${timeout}. Must be an integer`);
     return false;
-  } else if (!Number.isInteger(delay)) {
-    core.setFailed(`Invalid delay: ${delay}. Must be an integer`);
-    return false;
-  } else if (!Number.isInteger(consistencyDelay)) {
+  } else if (isNaN(+consistencyDelay) || !Number.isInteger(+consistencyDelay)) {
     core.setFailed(
-      `Invalid consistencyDelay: ${consistencyDelay}. Must be an integer`,
+      `Invalid consistency-delay: ${consistencyDelay}. Must be an integer`,
     );
     return false;
   }
+  return true;
 }
