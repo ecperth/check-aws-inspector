@@ -1,5 +1,7 @@
 name: 'AWS Insepctor Check'
 description: 'Check results of amazon inspect on image'
+icon: search
+color: red
 
 inputs:
   repository:
