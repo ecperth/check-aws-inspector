@@ -1,3 +1,5 @@
+![Test Coverage](badges/coverage.svg)
+
 ## Usage ##
 ```
 - name: Check results of aws inspect on image

@@ -1,30 +1,35 @@
 import * as core from '@actions/core';
 import { getImageScanFindings } from './ecr';
-import { findingSeverities, ScanFindings } from './scanner';
+import { ScanFindings, findingSeverities } from './scanner';
+const POLL_RATE = 5;
 
 run();
-export async function run(){
-  const repository = core.getInput('repository', { required: true }).trim();
-  const tag = core.getInput('tag', { required: true }).trim();
-  const failOn = core.getInput('fail-on').trim().toUpperCase();
-  const ignore = core.getInput('ignore').trim();
-  const timeout = core.getInput('timeout', { required: true }).trim();
-  const consistencyDelay = core
-    .getInput('consistency-delay', { required: true })
-    .trim();
+export async function run() {
+  const repositoryInput = core.getInput('repository', { trimWhitespace: true });
+  const tagInput = core.getInput('tag', { trimWhitespace: true });
+  const failOnInput = core
+    .getInput('fail-on', { trimWhitespace: true })
+    .toUpperCase();
+  const ignoreInput = core.getInput('ignore', { trimWhitespace: true });
+  const timeoutInput = core.getInput('timeout', { trimWhitespace: true });
+  const consistencyDelayInput = core.getInput('consistency-delay', {
+    trimWhitespace: true,
+  });
 
-  const ignoreList = '' ? [] : ignore.replace(/\n|\s/g, ',').split(',');
-  
-  if (validateInput(failOn, timeout, consistencyDelay)) {
-    try{
-      const scanFindings : ScanFindings = await getImageScanFindings(
-        repository,
-        tag,
-        failOn,
+  const ignoreList = splitIgnoreList(ignoreInput);
+  const failOn = failOnInput === '' ? undefined : failOnInput;
+
+  if (validateInput(failOn, timeoutInput, consistencyDelayInput)) {
+    try {
+      const scanFindings: ScanFindings = await getImageScanFindings(
+        repositoryInput,
+        tagInput,
         ignoreList,
-        +timeout,
-        +consistencyDelay,
-      )
+        +timeoutInput,
+        POLL_RATE,
+        +consistencyDelayInput,
+        failOn,
+      );
       core.setOutput(
         'findingSeverityCounts',
         scanFindings.findingSeverityCounts,
@@ -32,30 +37,45 @@ export async function run(){
       if (scanFindings.errorMessage) {
         core.setFailed(scanFindings.errorMessage);
       }
-    } catch (err){
-      if (err instanceof Error){
-        core.setFailed(err.message)
+    } catch (err) {
+      if (err instanceof Error) {
+        core.setFailed(err.message);
       }
     }
   }
 }
 
 function validateInput(
-  failOn: string,
+  failOn: string | undefined,
   timeout: string,
   consistencyDelay: string,
 ): boolean {
-  if (findingSeverities[failOn] == undefined) {
+  if (failOn != undefined && findingSeverities[failOn] == undefined) {
     core.setFailed(`Invalid fail-on: ${failOn}`);
     return false;
-  } else if (isNaN(+timeout) || !Number.isInteger(+timeout)) {
-    core.setFailed(`Invalid timeout: ${timeout}. Must be an integer`);
+  } else if (!isStringPositiveInteger(timeout)) {
+    core.setFailed(`Invalid timeout: ${timeout}. Must be a positive integer`);
     return false;
-  } else if (isNaN(+consistencyDelay) || !Number.isInteger(+consistencyDelay)) {
+  } else if (!isStringPositiveInteger(consistencyDelay)) {
     core.setFailed(
-      `Invalid consistency-delay: ${consistencyDelay}. Must be an integer`,
+      `Invalid consistency-delay: ${consistencyDelay}. Must be a positive integer`,
     );
     return false;
   }
   return true;
+}
+
+function isStringPositiveInteger(input: string) {
+  return !isNaN(+input) && Number.isInteger(+input) && +input >= 0;
+}
+
+export function splitIgnoreList(ignore: string) {
+  return ignore === ''
+    ? []
+    : ignore
+        .trim()
+        .replace(/\n+|\s+/g, ',')
+        .replace(/,+/g, ',')
+        .split(',')
+        .map((cv) => cv.trim());
 }
