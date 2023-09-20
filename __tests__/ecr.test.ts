@@ -308,7 +308,6 @@ describe('mulitple pages of findingSeverityCounts', () => {
       ecrClientMock
         .commandCalls(DescribeImageScanFindingsCommand)
         .filter((x) => {
-          console.log(x.args[0].input.nextToken);
           return x.args[0].input.nextToken === 'NEXT_TOKEN2';
         }).length,
     ).toEqual(3);
