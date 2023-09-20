@@ -2,12 +2,13 @@ import * as core from '@actions/core';
 import {
   ECRClient,
   DescribeImageScanFindingsCommand,
+  ScanNotFoundException,
+  ImageNotFoundException,
 } from '@aws-sdk/client-ecr';
 import { findingSeverities, ScanFindings } from './scanner';
 import { setTimeout } from 'timers/promises';
 
 const client = new ECRClient();
-
 /**
  * @param {string} repository - ECR repo name
  * @param {tag} tag - Image tag
@@ -97,15 +98,25 @@ async function pollForScanCompletion(
 ) {
   const timeoutMs = Date.now() + timeout * 1000;
   do {
-    core.info(`Polling for complete scan...`);
-    const resp = await client.send(command);
-    if (resp.imageScanStatus?.status === 'COMPLETE') {
-      core.info(`Scan complete!`);
-      return;
-    } else if (resp.imageScanStatus?.status === 'PENDING') {
-      core.info(`Scan status is "Pending"`);
-    } else {
-      throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
+    try {
+      core.info(`Polling for complete scan...`);
+      const resp = await client.send(command);
+      if (resp.imageScanStatus?.status === 'COMPLETE') {
+        core.info(`Scan complete!`);
+        return;
+      } else if (resp.imageScanStatus?.status === 'PENDING') {
+        core.info(`Scan status is "Pending"`);
+      } else {
+        throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
+      }
+    } catch (err) {
+      if (err instanceof ImageNotFoundException) {
+        core.warning(err.message);
+      } else if (err instanceof ScanNotFoundException) {
+        core.info(err.message);
+      } else {
+        throw err;
+      }
     }
     await setTimeout(delay);
   } while (Date.now() < timeoutMs);

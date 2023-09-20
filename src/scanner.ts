@@ -3,9 +3,8 @@ export const findingSeverities: Record<string, number> = {
   HIGH: 1,
   MEDIUM: 2,
   LOW: 3,
-  OTHER: 4,
   INFORMATIONAL: 4,
-  UNTRIAGED: 4,
+  UNDEFINED: 4,
 };
 
 export type ScanFindings = {

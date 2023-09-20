@@ -28125,17 +28125,30 @@ exports.getImageScanFindings = getImageScanFindings;
 async function pollForScanCompletion(command, delay, timeout) {
     const timeoutMs = Date.now() + timeout * 1000;
     do {
-        core.info(`Polling for complete scan...`);
-        const resp = await client.send(command);
-        if (resp.imageScanStatus?.status === 'COMPLETE') {
-            core.info(`Scan complete!`);
-            return;
+        try {
+            core.info(`Polling for complete scan...`);
+            const resp = await client.send(command);
+            if (resp.imageScanStatus?.status === 'COMPLETE') {
+                core.info(`Scan complete!`);
+                return;
+            }
+            else if (resp.imageScanStatus?.status === 'PENDING') {
+                core.info(`Scan status is "Pending"`);
+            }
+            else {
+                throw new Error(`Unknown status: ${resp.imageScanStatus.status}`);
+            }
         }
-        else if (resp.imageScanStatus?.status === 'PENDING') {
-            core.info(`Scan status is "Pending"`);
-        }
-        else {
-            throw new Error(`Unknown status: ${resp.imageScanStatus.status}`);
+        catch (err) {
+            if (err instanceof client_ecr_1.ImageNotFoundException) {
+                core.warning(err.message);
+            }
+            else if (err instanceof client_ecr_1.ScanNotFoundException) {
+                core.info(err.message);
+            }
+            else {
+                throw err;
+            }
         }
         await (0, promises_1.setTimeout)(delay);
     } while (Date.now() < timeoutMs);
@@ -28351,9 +28364,8 @@ exports.findingSeverities = {
     HIGH: 1,
     MEDIUM: 2,
     LOW: 3,
-    OTHER: 4,
     INFORMATIONAL: 4,
-    UNTRIAGED: 4,
+    UNDEFINED: 4,
 };
 
 
