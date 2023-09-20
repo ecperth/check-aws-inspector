@@ -1,5 +1,8 @@
-name: 'AWS Insepctor Check'
-description: 'Check results of amazon inspect on image'
+name: 'AWS Inspector Check'
+description: 'Check findings of an aws inspector scan'
+branding:
+  icon: 'search'
+  color: 'red'
 
 inputs:
   repository:
