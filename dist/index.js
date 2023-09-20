@@ -28027,27 +28027,51 @@ exports["default"] = _default;
 /***/ }),
 
 /***/ 27918:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getImageScanFindings = void 0;
+exports.areFindingsEqual = exports.getImageScanFindings = void 0;
+const core = __importStar(__nccwpck_require__(42186));
 const client_ecr_1 = __nccwpck_require__(8923);
 const scanner_1 = __nccwpck_require__(83232);
 const promises_1 = __nccwpck_require__(68670);
 const client = new client_ecr_1.ECRClient();
-const POLL_RATE = 5000;
 /**
  * @param {string} repository - ECR repo name
  * @param {tag} tag - Image tag
- * @param {string} failOn - Severity to cause failure
  * @param {string[]} ignore - VulnerabilityIds to ignore
- * @param {string} timeout - Time in seconds for scan to complete before failure
- * @param {string} consistencyDelay - Time in seconds between polls for consistency
+ * @param {number} timeout - Time in seconds for scan to complete before failure
+ * @param {number} pollRate - Time in seconds between polls complete scan status
+ * @param {number} consistencyDelay - Time in seconds between polls for consistency
+ * @param {string} [failOn] - Severity to cause failure
  * @returns {Promise<ScanFindings>}
  */
-async function getImageScanFindings(repository, tag, failOn, ignore, timeout, consistencyDelay) {
+async function getImageScanFindings(repository, tag, ignore, timeout, pollRate, consistencyDelay, failOn) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
         imageId: {
@@ -28056,7 +28080,7 @@ async function getImageScanFindings(repository, tag, failOn, ignore, timeout, co
     });
     // Poll with delay untill we get 'COMPLETE' status.
     try {
-        await pollForScanCompletion(command, POLL_RATE, timeout);
+        await pollForScanCompletion(command, pollRate * 1000, timeout);
     }
     catch (err) {
         if (err instanceof Error) {
@@ -28066,8 +28090,8 @@ async function getImageScanFindings(repository, tag, failOn, ignore, timeout, co
     // Poll with consistencyDelay untill we get consistent data
     const findingSeverityCounts = await pollForConsistency(command, consistencyDelay * 1000);
     // No findings
-    if (!findingSeverityCounts) {
-        return {};
+    if (Object.keys(findingSeverityCounts).length === 0) {
+        return { findingSeverityCounts: {} };
     }
     // No vulnerability > failOn or failOn not provided
     if (!failOn ||
@@ -28101,27 +28125,17 @@ exports.getImageScanFindings = getImageScanFindings;
 async function pollForScanCompletion(command, delay, timeout) {
     const timeoutMs = Date.now() + timeout * 1000;
     do {
-        console.log(`Polling for complete scan...`);
-        try {
-            const resp = await client.send(command);
-            if (resp.imageScanStatus?.status === 'COMPLETE') {
-                console.log(`Scan complete!`);
-                return;
-            }
-            else if (resp.imageScanStatus?.status === 'PENDING') {
-                console.log(`Scan status is "Pending"`);
-            }
-            else {
-                throw new Error(`Unknown status: ${resp.imageScanStatus.status}`);
-            }
+        core.info(`Polling for complete scan...`);
+        const resp = await client.send(command);
+        if (resp.imageScanStatus?.status === 'COMPLETE') {
+            core.info(`Scan complete!`);
+            return;
         }
-        catch (err) {
-            if (err instanceof client_ecr_1.ScanNotFoundException) {
-                console.log(`ERROR: ${err.message}`);
-            }
-            else {
-                throw err;
-            }
+        else if (resp.imageScanStatus?.status === 'PENDING') {
+            core.info(`Scan status is "Pending"`);
+        }
+        else {
+            throw new Error(`Unknown status: ${resp.imageScanStatus.status}`);
         }
         await (0, promises_1.setTimeout)(delay);
     } while (Date.now() < timeoutMs);
@@ -28137,12 +28151,12 @@ async function pollForConsistency(command, delay) {
     let previousResult = undefined;
     while (true) {
         const currentResult = await getAllSeverityCounts(command);
-        console.log(currentResult);
+        core.info(JSON.stringify(currentResult));
         if (previousResult && areFindingsEqual(currentResult, previousResult)) {
-            console.log('Consistent Results!');
+            core.info('Consistent Results!');
             return currentResult;
         }
-        console.log('Polling for consitency...');
+        core.info('Polling for consitency...');
         previousResult = currentResult;
         await (0, promises_1.setTimeout)(delay);
     }
@@ -28154,8 +28168,10 @@ async function pollForConsistency(command, delay) {
  */
 async function getAllSeverityCounts(command) {
     const result = {};
+    let nextToken = undefined;
     do {
-        const page = await client.send(command);
+        const nextCommand = new client_ecr_1.DescribeImageScanFindingsCommand({ ...command.input, nextToken });
+        const page = await client.send(nextCommand);
         if (!page.imageScanFindings?.findingSeverityCounts) {
             return result;
         }
@@ -28168,8 +28184,8 @@ async function getAllSeverityCounts(command) {
                 result[key] = page.imageScanFindings.findingSeverityCounts[key];
             }
         });
-        command.input.nextToken = page.nextToken;
-    } while (command.input.nextToken);
+        nextToken = page.nextToken;
+    } while (nextToken);
     return result;
 }
 /**
@@ -28179,12 +28195,14 @@ async function getAllSeverityCounts(command) {
  * items in the ignore list have been processed.
  */
 async function doesContainNotIgnoredFailOnVulnerabilty(command, findingSeverityCounts, failOn, ignore) {
+    let nextToken = undefined;
     do {
-        const resp = await client.send(command);
-        resp.imageScanFindings?.enhancedFindings?.forEach((vulnerabilty) => {
+        const nextCommand = new client_ecr_1.DescribeImageScanFindingsCommand({ ...command.input, nextToken });
+        const page = await client.send(nextCommand);
+        page.imageScanFindings?.enhancedFindings?.forEach((vulnerabilty) => {
             const ignoreIndex = ignore.indexOf(vulnerabilty.packageVulnerabilityDetails.vulnerabilityId);
             if (ignoreIndex >= 0) {
-                console.log(`Vulnerability ${vulnerabilty.packageVulnerabilityDetails
+                core.info(`Vulnerability ${vulnerabilty.packageVulnerabilityDetails
                     .vulnerabilityId} is ignored. Decrementing the ${vulnerabilty.severity} severity count.`);
                 findingSeverityCounts[vulnerabilty.severity] =
                     findingSeverityCounts[vulnerabilty.severity] - 1;
@@ -28193,9 +28211,9 @@ async function doesContainNotIgnoredFailOnVulnerabilty(command, findingSeverityC
                     return false;
                 }
             }
-            command.input.nextToken = resp.nextToken;
         });
-    } while (command.input.nextToken && ignore.length > 0);
+        nextToken = page.nextToken;
+    } while (nextToken && ignore.length > 0);
     return doesContainFailOnVulnerabilty(findingSeverityCounts, failOn);
 }
 function doesContainFailOnVulnerabilty(findingSeverityCounts, failOn) {
@@ -28212,13 +28230,14 @@ function areFindingsEqual(f1, f2) {
     if (keys.length != Object.keys(f2).length) {
         return false;
     }
-    keys.forEach((k) => {
-        if (f1[k] != f2[k]) {
+    for (let i = 0; i < keys.length; i++) {
+        if (f1[keys[i]] != f2[keys[i]]) {
             return false;
         }
-    });
+    }
     return true;
 }
+exports.areFindingsEqual = areFindingsEqual;
 
 
 /***/ }),
@@ -28252,43 +28271,70 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.splitIgnoreList = exports.run = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const ecr_1 = __nccwpck_require__(27918);
 const scanner_1 = __nccwpck_require__(83232);
-const repository = core.getInput('repository', { required: true }).trim();
-const tag = core.getInput('tag', { required: true }).trim();
-const failOn = core.getInput('fail-on').trim().toUpperCase();
-const ignore = core.getInput('ignore').trim();
-const timeout = core.getInput('timeout', { required: true }).trim();
-const consistencyDelay = core
-    .getInput('consistency-delay', { required: true })
-    .trim();
-const ignoreList =  false ? 0 : ignore.replace(/\n|\s/g, ',').split(',');
-if (validateInput(failOn, timeout, consistencyDelay)) {
-    (0, ecr_1.getImageScanFindings)(repository, tag, failOn, ignoreList, +timeout, +consistencyDelay)
-        .then((scanFindings) => {
-        core.setOutput('findingSeverityCounts', scanFindings.findingSeverityCounts);
-        if (scanFindings.errorMessage) {
-            core.setFailed(scanFindings.errorMessage);
+const POLL_RATE = 5;
+run();
+async function run() {
+    const repositoryInput = core.getInput('repository', { trimWhitespace: true });
+    const tagInput = core.getInput('tag', { trimWhitespace: true });
+    const failOnInput = core
+        .getInput('fail-on', { trimWhitespace: true })
+        .toUpperCase();
+    const ignoreInput = core.getInput('ignore', { trimWhitespace: true });
+    const timeoutInput = core.getInput('timeout', { trimWhitespace: true });
+    const consistencyDelayInput = core.getInput('consistency-delay', {
+        trimWhitespace: true,
+    });
+    const ignoreList = splitIgnoreList(ignoreInput);
+    const failOn = failOnInput === '' ? undefined : failOnInput;
+    if (validateInput(failOn, timeoutInput, consistencyDelayInput)) {
+        try {
+            const scanFindings = await (0, ecr_1.getImageScanFindings)(repositoryInput, tagInput, ignoreList, +timeoutInput, POLL_RATE, +consistencyDelayInput, failOn);
+            core.setOutput('findingSeverityCounts', scanFindings.findingSeverityCounts);
+            if (scanFindings.errorMessage) {
+                core.setFailed(scanFindings.errorMessage);
+            }
         }
-    })
-        .catch((err) => core.setFailed(err.message));
+        catch (err) {
+            if (err instanceof Error) {
+                core.setFailed(err.message);
+            }
+        }
+    }
 }
+exports.run = run;
 function validateInput(failOn, timeout, consistencyDelay) {
-    if (scanner_1.findingSeverities[failOn] == undefined) {
+    if (failOn != undefined && scanner_1.findingSeverities[failOn] == undefined) {
         core.setFailed(`Invalid fail-on: ${failOn}`);
         return false;
     }
-    else if (isNaN(+timeout) || !Number.isInteger(+timeout)) {
-        core.setFailed(`Invalid timeout: ${timeout}. Must be an integer`);
+    else if (!isStringPositiveInteger(timeout)) {
+        core.setFailed(`Invalid timeout: ${timeout}. Must be a positive integer`);
         return false;
     }
-    else if (isNaN(+consistencyDelay) || !Number.isInteger(+consistencyDelay)) {
-        core.setFailed(`Invalid consistency-delay: ${consistencyDelay}. Must be an integer`);
+    else if (!isStringPositiveInteger(consistencyDelay)) {
+        core.setFailed(`Invalid consistency-delay: ${consistencyDelay}. Must be a positive integer`);
         return false;
     }
     return true;
 }
+function isStringPositiveInteger(input) {
+    return !isNaN(+input) && Number.isInteger(+input) && +input >= 0;
+}
+function splitIgnoreList(ignore) {
+    return ignore === ''
+        ? []
+        : ignore
+            .trim()
+            .replace(/\n+|\s+/g, ',')
+            .replace(/,+/g, ',')
+            .split(',')
+            .map((cv) => cv.trim());
+}
+exports.splitIgnoreList = splitIgnoreList;
 
 
 /***/ }),

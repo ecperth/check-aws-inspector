@@ -1,3 +1,8 @@
+
+<p align="center">
+  <img src="badges/coverage.svg">
+</p>
+
 ## Usage ##
 ```
 - name: Check results of aws inspect on image

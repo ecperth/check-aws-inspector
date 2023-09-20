@@ -1,30 +1,31 @@
+import * as core from '@actions/core';
 import {
   ECRClient,
   DescribeImageScanFindingsCommand,
-  ScanNotFoundException,
 } from '@aws-sdk/client-ecr';
 import { findingSeverities, ScanFindings } from './scanner';
 import { setTimeout } from 'timers/promises';
 
 const client = new ECRClient();
-const POLL_RATE = 5000;
 
 /**
  * @param {string} repository - ECR repo name
  * @param {tag} tag - Image tag
- * @param {string} failOn - Severity to cause failure
  * @param {string[]} ignore - VulnerabilityIds to ignore
- * @param {string} timeout - Time in seconds for scan to complete before failure
- * @param {string} consistencyDelay - Time in seconds between polls for consistency
+ * @param {number} timeout - Time in seconds for scan to complete before failure
+ * @param {number} pollRate - Time in seconds between polls complete scan status
+ * @param {number} consistencyDelay - Time in seconds between polls for consistency
+ * @param {string} [failOn] - Severity to cause failure
  * @returns {Promise<ScanFindings>}
  */
 export async function getImageScanFindings(
   repository: string,
   tag: string,
-  failOn: string,
   ignore: string[],
   timeout: number,
+  pollRate: number,
   consistencyDelay: number,
+  failOn?: string,
 ): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
@@ -35,7 +36,7 @@ export async function getImageScanFindings(
 
   // Poll with delay untill we get 'COMPLETE' status.
   try {
-    await pollForScanCompletion(command, POLL_RATE, timeout);
+    await pollForScanCompletion(command, pollRate * 1000, timeout);
   } catch (err) {
     if (err instanceof Error) {
       return { errorMessage: err.message };
@@ -48,8 +49,8 @@ export async function getImageScanFindings(
     consistencyDelay * 1000,
   );
   // No findings
-  if (!findingSeverityCounts) {
-    return {};
+  if (Object.keys(findingSeverityCounts).length === 0) {
+    return { findingSeverityCounts: {} };
   }
   // No vulnerability > failOn or failOn not provided
   if (
@@ -96,23 +97,15 @@ async function pollForScanCompletion(
 ) {
   const timeoutMs = Date.now() + timeout * 1000;
   do {
-    console.log(`Polling for complete scan...`);
-    try {
-      const resp = await client.send(command);
-      if (resp.imageScanStatus?.status === 'COMPLETE') {
-        console.log(`Scan complete!`);
-        return;
-      } else if (resp.imageScanStatus?.status === 'PENDING') {
-        console.log(`Scan status is "Pending"`);
-      } else {
-        throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
-      }
-    } catch (err) {
-      if (err instanceof ScanNotFoundException) {
-        console.log(`ERROR: ${err.message}`);
-      } else {
-        throw err;
-      }
+    core.info(`Polling for complete scan...`);
+    const resp = await client.send(command);
+    if (resp.imageScanStatus?.status === 'COMPLETE') {
+      core.info(`Scan complete!`);
+      return;
+    } else if (resp.imageScanStatus?.status === 'PENDING') {
+      core.info(`Scan status is "Pending"`);
+    } else {
+      throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
     }
     await setTimeout(delay);
   } while (Date.now() < timeoutMs);
@@ -132,12 +125,12 @@ async function pollForConsistency(
   let previousResult = undefined;
   while (true) {
     const currentResult = await getAllSeverityCounts(command);
-    console.log(currentResult);
+    core.info(JSON.stringify(currentResult));
     if (previousResult && areFindingsEqual(currentResult, previousResult)) {
-      console.log('Consistent Results!');
+      core.info('Consistent Results!');
       return currentResult;
     }
-    console.log('Polling for consitency...');
+    core.info('Polling for consitency...');
     previousResult = currentResult;
     await setTimeout(delay);
   }
@@ -152,8 +145,11 @@ async function getAllSeverityCounts(
   command: DescribeImageScanFindingsCommand,
 ): Promise<Record<string, number>> {
   const result: Record<string, number> = {};
+  let nextToken: string | undefined = undefined;
   do {
-    const page = await client.send(command);
+    const nextCommand: DescribeImageScanFindingsCommand =
+      new DescribeImageScanFindingsCommand({ ...command.input, nextToken });
+    const page = await client.send(nextCommand);
     if (!page.imageScanFindings?.findingSeverityCounts) {
       return result;
     }
@@ -167,8 +163,8 @@ async function getAllSeverityCounts(
         }
       },
     );
-    command.input.nextToken = page.nextToken;
-  } while (command.input.nextToken);
+    nextToken = page.nextToken;
+  } while (nextToken);
   return result;
 }
 
@@ -184,14 +180,17 @@ async function doesContainNotIgnoredFailOnVulnerabilty(
   failOn: string,
   ignore: string[],
 ): Promise<boolean> {
+  let nextToken: string | undefined = undefined;
   do {
-    const resp = await client.send(command);
-    resp.imageScanFindings?.enhancedFindings?.forEach((vulnerabilty) => {
+    const nextCommand: DescribeImageScanFindingsCommand =
+      new DescribeImageScanFindingsCommand({ ...command.input, nextToken });
+    const page = await client.send(nextCommand);
+    page.imageScanFindings?.enhancedFindings?.forEach((vulnerabilty) => {
       const ignoreIndex = ignore.indexOf(
         vulnerabilty.packageVulnerabilityDetails!.vulnerabilityId!,
       );
       if (ignoreIndex >= 0) {
-        console.log(
+        core.info(
           `Vulnerability ${vulnerabilty.packageVulnerabilityDetails!
             .vulnerabilityId!} is ignored. Decrementing the ${vulnerabilty.severity!} severity count.`,
         );
@@ -202,9 +201,9 @@ async function doesContainNotIgnoredFailOnVulnerabilty(
           return false;
         }
       }
-      command.input.nextToken = resp.nextToken;
     });
-  } while (command.input.nextToken && ignore.length > 0);
+    nextToken = page.nextToken;
+  } while (nextToken && ignore.length > 0);
   return doesContainFailOnVulnerabilty(findingSeverityCounts, failOn);
 }
 
@@ -223,7 +222,7 @@ function doesContainFailOnVulnerabilty(
   return false;
 }
 
-function areFindingsEqual(
+export function areFindingsEqual(
   f1: Record<string, number>,
   f2: Record<string, number>,
 ): boolean {
@@ -231,10 +230,11 @@ function areFindingsEqual(
   if (keys.length != Object.keys(f2).length) {
     return false;
   }
-  keys.forEach((k) => {
-    if (f1[k] != f2[k]) {
+
+  for (let i = 0; i < keys.length; i++) {
+    if (f1[keys[i]] != f2[keys[i]]) {
       return false;
     }
-  });
+  }
   return true;
 }
