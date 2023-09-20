@@ -28161,6 +28161,9 @@ async function pollForScanCompletion(command, delay, timeout) {
  * for a few seconds after
  */
 async function pollForConsistency(command, delay) {
+    if (delay === 0) {
+        return getAllSeverityCounts(command);
+    }
     let previousResult = undefined;
     while (true) {
         const currentResult = await getAllSeverityCounts(command);
@@ -28216,7 +28219,7 @@ async function doesContainNotIgnoredFailOnVulnerabilty(command, findingSeverityC
             const ignoreIndex = ignore.indexOf(vulnerabilty.packageVulnerabilityDetails.vulnerabilityId);
             if (ignoreIndex >= 0) {
                 core.info(`Vulnerability ${vulnerabilty.packageVulnerabilityDetails
-                    .vulnerabilityId} is ignored. Decrementing the ${vulnerabilty.severity} severity count.`);
+                    .vulnerabilityId} is ignored with ${vulnerabilty.severity} severity.`);
                 findingSeverityCounts[vulnerabilty.severity] =
                     findingSeverityCounts[vulnerabilty.severity] - 1;
                 ignore.splice(ignoreIndex, 1);

@@ -293,7 +293,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
       pollRateSeconds,
-      0,
+      0.01,
       'CRITICAL',
     );
     expect(result).toEqual({
@@ -325,7 +325,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
       ['CRIT1'],
       timeoutSeconds,
       pollRateSeconds,
-      0,
+      0.01,
       'CRITICAL',
     );
     expect(result).toEqual({

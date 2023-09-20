@@ -15,7 +15,7 @@ This action can be used to check the findings of an [amazon inspector](https://d
       repository: 
       # image tag
       tag: 
-      # vulnerability severity to cause action to fail. (Optional)
+      # vulnerability severity to cause action to fail (Optional)
       # if provided the action will fail if a vulnerability of that severity or higher is 
       # found. [ CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL| UNDEFINED ]
       fail-on: 
@@ -26,7 +26,7 @@ This action can be used to check the findings of an [amazon inspector](https://d
       timeout: 
       # time (s) between polls for consistency
       # i suggest reading the explanation below and experimenting for yourself
-      # as aws inspector behaviour may change making this unnecessary 
+      # as aws inspector behaviour may change making this unnecessary
       consistency-delay: 
 ```
 ### Output ###

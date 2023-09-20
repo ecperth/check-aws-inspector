@@ -133,6 +133,10 @@ async function pollForConsistency(
   command: DescribeImageScanFindingsCommand,
   delay: number,
 ): Promise<Record<string, number>> {
+  if (delay === 0) {
+    return getAllSeverityCounts(command);
+  }
+
   let previousResult = undefined;
   while (true) {
     const currentResult = await getAllSeverityCounts(command);
@@ -203,7 +207,7 @@ async function doesContainNotIgnoredFailOnVulnerabilty(
       if (ignoreIndex >= 0) {
         core.info(
           `Vulnerability ${vulnerabilty.packageVulnerabilityDetails!
-            .vulnerabilityId!} is ignored. Decrementing the ${vulnerabilty.severity!} severity count.`,
+            .vulnerabilityId!} is ignored with ${vulnerabilty.severity!} severity.`,
         );
         findingSeverityCounts[vulnerabilty.severity!] =
           findingSeverityCounts[vulnerabilty.severity!] - 1;
