@@ -22,9 +22,9 @@ This action can be used to check the findings of an [amazon inspector](https://d
       # vulnerabilityIds to ignore (Optional)
       # seperated by spaces, commas or newlines
       ignore:
-      # time (s) to get complete status from ecr before action fails
+      # time (seconds) to get complete status from ecr before action fails
       timeout: 
-      # time (s) between polls for consistency
+      # time (seconds) between polls for consistency
       # i suggest reading the explanation below and experimenting for yourself
       # as aws inspector behaviour may change making this unnecessary
       consistency-delay: 
@@ -49,9 +49,6 @@ jobs:
 
   steps:
   - uses: actions/checkout@v4
-      with:
-      sparse-checkout: Dockerfile
-      sparse-checkout-cone-mode: false
 
   - name: Configure AWS Credentials
     uses: aws-actions/configure-aws-credentials@v3
@@ -89,7 +86,7 @@ jobs:
     if: always()
     run: echo "${{ steps.check-aws-inspector.outputs.findingSeverityCounts }}" 
 ```
-### permissions ###
+### Permissions ###
 Required permission to check scan findings of ecr image with amazon inspector:
 
 ```terraform
