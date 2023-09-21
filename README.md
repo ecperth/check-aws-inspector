@@ -49,9 +49,6 @@ jobs:
 
   steps:
   - uses: actions/checkout@v4
-      with:
-      sparse-checkout: Dockerfile
-      sparse-checkout-cone-mode: false
 
   - name: Configure AWS Credentials
     uses: aws-actions/configure-aws-credentials@v3
