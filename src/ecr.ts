@@ -21,6 +21,7 @@ const client = new ECRClient();
  */
 export async function getImageScanFindings(
   repository: string,
+  registryId: string | undefined,
   tag: string,
   ignore: string[],
   timeout: number,
@@ -30,6 +31,7 @@ export async function getImageScanFindings(
 ): Promise<ScanFindings> {
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
+    registryId: registryId,
     imageId: {
       imageTag: tag,
     },
@@ -113,7 +115,7 @@ async function pollForScanCompletion(
       if (err instanceof ImageNotFoundException) {
         core.warning(err.message);
       } else if (err instanceof ScanNotFoundException) {
-        core.info(err.message);
+        core.warning(err.message);
       } else {
         throw err;
       }
@@ -155,6 +157,11 @@ async function pollForConsistency(
  * Continues to send the provided command with the previous nextToken
  * and aggregating findingSeverityCounts untill the nextToken in not returned.
  * Returns the aggregated findingSeverityCounts.
+ *
+ * TODO: This is due to the annoying behaviour of the ecr api. When returning the paginated
+ * findings, the aggregated summary is only based on the current page. Meaning to get
+ * the full aggregated vulnerability counts we need to check all the pages. Update here if
+ * they change this.
  */
 async function getAllSeverityCounts(
   command: DescribeImageScanFindingsCommand,

@@ -4,10 +4,12 @@ import {
   DescribeImageScanFindingsCommand,
   DescribeImageScanFindingsCommandInput,
   DescribeImageScanFindingsCommandOutput,
+  ScanNotFoundException,
+  ImageNotFoundException,
 } from '@aws-sdk/client-ecr';
 import { mockClient } from 'aws-sdk-client-mock';
 
-const timeoutSeconds = 0;
+const timeoutSeconds = 0.05;
 const pollRateSeconds = 0.01;
 
 it('error when timeout is exceeded', async () => {
@@ -20,6 +22,7 @@ it('error when timeout is exceeded', async () => {
 
   const result = await getImageScanFindings(
     'repository',
+    undefined,
     'tag',
     [],
     timeoutSeconds,
@@ -27,7 +30,7 @@ it('error when timeout is exceeded', async () => {
     0,
   );
   expect(result).toEqual({
-    errorMessage: `No complete scan after 0 seconds`,
+    errorMessage: `No complete scan after ${timeoutSeconds} seconds`,
   });
 });
 
@@ -41,6 +44,7 @@ it('error when unexpected status', async () => {
 
   const result = await getImageScanFindings(
     'repository',
+    undefined,
     'tag',
     [],
     timeoutSeconds,
@@ -52,7 +56,47 @@ it('error when unexpected status', async () => {
   });
 });
 
-it('return error when recieved from ecr client during polling for completion', async () => {
+it('handle when ImageNotFoundException recieved when polling for completion and keep polling', async () => {
+  const ecrClientMock = mockClient(ECRClient);
+  ecrClientMock
+    .on(DescribeImageScanFindingsCommand)
+    .rejects(new ImageNotFoundException({ $metadata: {}, message: '' }));
+
+  const result = await getImageScanFindings(
+    'repository',
+    undefined,
+    'tag',
+    [],
+    timeoutSeconds,
+    pollRateSeconds,
+    0,
+  );
+  expect(result).toEqual({
+    errorMessage: `No complete scan after ${timeoutSeconds} seconds`,
+  });
+});
+
+it('handle when ScanNotFoundException recieved when polling for completion and keep polling', async () => {
+  const ecrClientMock = mockClient(ECRClient);
+  ecrClientMock
+    .on(DescribeImageScanFindingsCommand)
+    .rejects(new ScanNotFoundException({ $metadata: {}, message: '' }));
+
+  const result = await getImageScanFindings(
+    'repository',
+    undefined,
+    'tag',
+    [],
+    timeoutSeconds,
+    pollRateSeconds,
+    0,
+  );
+  expect(result).toEqual({
+    errorMessage: `No complete scan after ${timeoutSeconds} seconds`,
+  });
+});
+
+it('return error when Error recieved from ecr client during polling for completion', async () => {
   const ecrClientMock = mockClient(ECRClient);
   ecrClientMock
     .on(DescribeImageScanFindingsCommand)
@@ -60,6 +104,7 @@ it('return error when recieved from ecr client during polling for completion', a
 
   const result = await getImageScanFindings(
     'repository',
+    undefined,
     'tag',
     [],
     timeoutSeconds,
@@ -81,6 +126,7 @@ it('complete with no findings', async () => {
 
   const result = await getImageScanFindings(
     'repository',
+    undefined,
     'tag',
     [],
     timeoutSeconds,
@@ -103,6 +149,7 @@ it('complete with findings. No failOn', async () => {
 
   const result = await getImageScanFindings(
     'repository',
+    undefined,
     'tag',
     [],
     timeoutSeconds,
@@ -128,6 +175,7 @@ describe('set errorMessage on failOn condition', () => {
   it('error message when failOn severity found', async () => {
     const result = await getImageScanFindings(
       'repository',
+      undefined,
       'tag',
       [],
       timeoutSeconds,
@@ -144,6 +192,7 @@ describe('set errorMessage on failOn condition', () => {
   it('error message when > failOn severity found', async () => {
     const result = await getImageScanFindings(
       'repository',
+      undefined,
       'tag',
       [],
       timeoutSeconds,
@@ -184,6 +233,7 @@ describe('check ignored list', () => {
   it("don't fail on ignored vulnerability", async () => {
     const result = await getImageScanFindings(
       'repository',
+      undefined,
       'tag',
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
@@ -199,6 +249,7 @@ describe('check ignored list', () => {
   it('fail on ignored vulnerability when remaining vulnerabilty with failOn severity', async () => {
     const result = await getImageScanFindings(
       'repository',
+      undefined,
       'tag',
       ['CRIT1'],
       timeoutSeconds,
@@ -289,6 +340,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
 
     const result = await getImageScanFindings(
       'repository',
+      undefined,
       'tag',
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
@@ -321,6 +373,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
 
     const result = await getImageScanFindings(
       'repository',
+      undefined,
       'tag',
       ['CRIT1'],
       timeoutSeconds,
