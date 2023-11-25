@@ -91,6 +91,7 @@ jobs:
     if: always()
     run: echo "${{ steps.check-aws-inspector.outputs.findingSeverityCounts }}" 
 ```
+---
 ### Permissions ###
 Required permission to check scan findings of ecr image with amazon inspector:
 
@@ -110,8 +111,9 @@ data "aws_iam_policy_document" "example" {
   }
 }
 ```
+For more concrete example check out what i did [here](https://github.com/ecperth/check-aws-inspector-test/).
 
-
+---
 ### consistency-delay ###
 In my testing i noticed that after a COMPLETE scan status is returned from the ecr api, the findings will take a while to all roll in. I added code in my action to re-poll the ecr api for findings once the status is COMPLETE untill it gets the same result set twice. The consistency-delay input is the time between these re-polls. 15 seconds consistently produced a full set of results for me but i was testing on a image with a lot of vulnerabilities.
 
@@ -129,5 +131,26 @@ Polling for consitency...
 { HIGH: 97, MEDIUM: 199, LOW: 28, CRITICAL: 16 }
 Consistent Results!
 ```
+---
+### development ###
+Basic setup
+```
+git clone https://github.com/ecperth/check-aws-inspector
+cd check-aws-inspector
+npm install
+```
 
+Unit tests
+```
+npm run test
+```
 
+Bundle
+```
+npm run bundle
+```
+---
+
+Nothing more to it than that! 
+
+On the off chance someone would like to contribute to the repo just bundle the branch locally and pr. I will set up some basic cicd l8r.
