@@ -9,9 +9,29 @@ const setFailedMock = jest.spyOn(core, 'setFailed');
 const getImageScanFindingsMock = jest.spyOn(ecr, 'getImageScanFindings');
 
 describe('validation', () => {
+  it('fail early on invalid registry-id', async () => {
+    getInputMock.mockImplementation((name: string): string => {
+      switch (name) {
+        case 'registry-id':
+          return 'banana';
+        default:
+          return '0';
+      }
+    });
+    await run();
+
+    expect(setOutputMock).toBeCalledTimes(0);
+    expect(setFailedMock).toHaveBeenCalledWith(
+      `Invalid registry-id: banana. Must be 12 digit number`,
+    );
+    expect(getImageScanFindingsMock).toBeCalledTimes(0);
+  });
+
   it('fail early on invalid fail-on severity', async () => {
     getInputMock.mockImplementation((name: string): string => {
       switch (name) {
+        case 'registry-id':
+          return '012345678999';
         case 'fail-on':
           return 'banana';
         default:
@@ -28,6 +48,8 @@ describe('validation', () => {
   it('fail early on invalid timeout', async () => {
     getInputMock.mockImplementation((name: string): string => {
       switch (name) {
+        case 'registry-id':
+          return '012345678999';
         case 'fail-on':
           return 'critical';
         case 'timeout':
@@ -48,6 +70,8 @@ describe('validation', () => {
   it('fail early on invalid consistency-delay', async () => {
     getInputMock.mockImplementation((name: string): string => {
       switch (name) {
+        case 'registry-id':
+          return '012345678999';
         case 'fail-on':
           return 'critical';
         case 'timeout':
@@ -72,6 +96,8 @@ describe('execution handling', () => {
   beforeAll(() => {
     getInputMock.mockImplementation((name: string): string => {
       switch (name) {
+        case 'registry-id':
+          return '';
         case 'fail-on':
           return 'critical';
         case 'timeout':
@@ -88,6 +114,7 @@ describe('execution handling', () => {
     getImageScanFindingsMock.mockImplementation(
       (
         repository: string,
+        registryId: string | undefined,
         tag: string,
         ignore: string[],
         timeout: number,
@@ -109,6 +136,7 @@ describe('execution handling', () => {
     getImageScanFindingsMock.mockImplementation(
       (
         repository: string,
+        registryId: string | undefined,
         tag: string,
         ignore: string[],
         timeout: number,

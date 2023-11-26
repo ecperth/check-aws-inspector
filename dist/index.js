@@ -28071,9 +28071,10 @@ const client = new client_ecr_1.ECRClient();
  * @param {string} [failOn] - Severity to cause failure
  * @returns {Promise<ScanFindings>}
  */
-async function getImageScanFindings(repository, tag, ignore, timeout, pollRate, consistencyDelay, failOn) {
+async function getImageScanFindings(repository, registryId, tag, ignore, timeout, pollRate, consistencyDelay, failOn) {
     const command = new client_ecr_1.DescribeImageScanFindingsCommand({
         repositoryName: repository,
+        registryId: registryId,
         imageId: {
             imageTag: tag,
         },
@@ -28144,7 +28145,7 @@ async function pollForScanCompletion(command, delay, timeout) {
                 core.warning(err.message);
             }
             else if (err instanceof client_ecr_1.ScanNotFoundException) {
-                core.info(err.message);
+                core.warning(err.message);
             }
             else {
                 throw err;
@@ -28181,6 +28182,11 @@ async function pollForConsistency(command, delay) {
  * Continues to send the provided command with the previous nextToken
  * and aggregating findingSeverityCounts untill the nextToken in not returned.
  * Returns the aggregated findingSeverityCounts.
+ *
+ * TODO: This is due to the annoying behaviour of the ecr api. When returning the paginated
+ * findings, the aggregated summary is only based on the current page. Meaning to get
+ * the full aggregated vulnerability counts we need to check all the pages. Update here if
+ * they change this.
  */
 async function getAllSeverityCounts(command) {
     const result = {};
@@ -28295,6 +28301,9 @@ const POLL_RATE = 5;
 run();
 async function run() {
     const repositoryInput = core.getInput('repository', { trimWhitespace: true });
+    const registryIdInput = core.getInput('registry-id', {
+        trimWhitespace: true,
+    });
     const tagInput = core.getInput('tag', { trimWhitespace: true });
     const failOnInput = core
         .getInput('fail-on', { trimWhitespace: true })
@@ -28306,9 +28315,10 @@ async function run() {
     });
     const ignoreList = splitIgnoreList(ignoreInput);
     const failOn = failOnInput === '' ? undefined : failOnInput;
-    if (validateInput(failOn, timeoutInput, consistencyDelayInput)) {
+    const registryId = registryIdInput === '' ? undefined : registryIdInput;
+    if (validateInput(registryId, failOn, timeoutInput, consistencyDelayInput)) {
         try {
-            const scanFindings = await (0, ecr_1.getImageScanFindings)(repositoryInput, tagInput, ignoreList, +timeoutInput, POLL_RATE, +consistencyDelayInput, failOn);
+            const scanFindings = await (0, ecr_1.getImageScanFindings)(repositoryInput, registryId, tagInput, ignoreList, +timeoutInput, POLL_RATE, +consistencyDelayInput, failOn);
             core.setOutput('findingSeverityCounts', scanFindings.findingSeverityCounts);
             if (scanFindings.errorMessage) {
                 core.setFailed(scanFindings.errorMessage);
@@ -28322,8 +28332,12 @@ async function run() {
     }
 }
 exports.run = run;
-function validateInput(failOn, timeout, consistencyDelay) {
-    if (failOn != undefined && scanner_1.findingSeverities[failOn] == undefined) {
+function validateInput(registryId, failOn, timeout, consistencyDelay) {
+    if (registryId != undefined && !/^\d{12}$/.test(registryId)) {
+        core.setFailed(`Invalid registry-id: ${registryId}. Must be 12 digit number`);
+        return false;
+    }
+    else if (failOn != undefined && scanner_1.findingSeverities[failOn] == undefined) {
         core.setFailed(`Invalid fail-on: ${failOn}`);
         return false;
     }

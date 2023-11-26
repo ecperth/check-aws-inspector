@@ -6,6 +6,9 @@ const POLL_RATE = 5;
 run();
 export async function run() {
   const repositoryInput = core.getInput('repository', { trimWhitespace: true });
+  const registryIdInput = core.getInput('registry-id', {
+    trimWhitespace: true,
+  });
   const tagInput = core.getInput('tag', { trimWhitespace: true });
   const failOnInput = core
     .getInput('fail-on', { trimWhitespace: true })
@@ -18,11 +21,13 @@ export async function run() {
 
   const ignoreList = splitIgnoreList(ignoreInput);
   const failOn = failOnInput === '' ? undefined : failOnInput;
+  const registryId = registryIdInput === '' ? undefined : registryIdInput;
 
-  if (validateInput(failOn, timeoutInput, consistencyDelayInput)) {
+  if (validateInput(registryId, failOn, timeoutInput, consistencyDelayInput)) {
     try {
       const scanFindings: ScanFindings = await getImageScanFindings(
         repositoryInput,
+        registryId,
         tagInput,
         ignoreList,
         +timeoutInput,
@@ -46,11 +51,17 @@ export async function run() {
 }
 
 function validateInput(
+  registryId: string | undefined,
   failOn: string | undefined,
   timeout: string,
   consistencyDelay: string,
 ): boolean {
-  if (failOn != undefined && findingSeverities[failOn] == undefined) {
+  if (registryId != undefined && !/^\d{12}$/.test(registryId)) {
+    core.setFailed(
+      `Invalid registry-id: ${registryId}. Must be 12 digit number`,
+    );
+    return false;
+  } else if (failOn != undefined && findingSeverities[failOn] == undefined) {
     core.setFailed(`Invalid fail-on: ${failOn}`);
     return false;
   } else if (!isStringPositiveInteger(timeout)) {

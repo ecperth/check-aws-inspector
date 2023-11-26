@@ -8,6 +8,9 @@ inputs:
   repository:
     description: 'Repository name'
     required: true
+  registryId:
+    description: 'Registry id (aws account id of ecr repository)'
+    required: false
   tag:
     description: 'Tag of scanned image'
     required: true

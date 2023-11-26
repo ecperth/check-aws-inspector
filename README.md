@@ -3,16 +3,20 @@
   <img src="badges/coverage.svg">
 </p>
 
-# Check AWS Inspector V1.0 #
+# Check AWS Inspector V1.1 #
 
 This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. It has only been tested with inspector v2. Currently the action also only supports checking the results of scans on images pushed to ecr. May be modified for lambdas and ec2 instances in the future.
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v1.0
+- uses: ecperth/check-aws-inspector@v1.1
     with:
       # ecr repository name
       repository: 
+      # ecr registry id (Optional)(
+      # aws account id which containts the ecr registry. Only required if
+      # different from primary aws account id of authed role
+      registry-id:
       # image tag
       tag: 
       # vulnerability severity to cause action to fail (Optional)
@@ -53,7 +57,7 @@ jobs:
   - name: Configure AWS Credentials
     uses: aws-actions/configure-aws-credentials@v3
     with:
-      role-to-assume: ${{ vars.IAM_ROLE }}
+      role-to-assume: {IAM_ROLE}
       aws-region: ap-southeast-2
 
   - name: Login to Amazon ECR
@@ -74,6 +78,7 @@ jobs:
     uses: ecperth/check-aws-inspector@v1.0
     with:
       repository: my-ecr-repo
+      registry-id: my-ecr-repo
       tag: ${{ github.event.inputs.tag }}
       fail-on: CRITICAL
       ignore: 	
@@ -86,6 +91,7 @@ jobs:
     if: always()
     run: echo "${{ steps.check-aws-inspector.outputs.findingSeverityCounts }}" 
 ```
+---
 ### Permissions ###
 Required permission to check scan findings of ecr image with amazon inspector:
 
@@ -105,10 +111,11 @@ data "aws_iam_policy_document" "example" {
   }
 }
 ```
+For more concrete example check out what i did [here](https://github.com/ecperth/check-aws-inspector-test/).
 
-
+---
 ### consistency-delay ###
-In my testing i noticed that after a COMPLETE scan status is returned from the ecr api, the findings will take a while to all roll in. I added code in my action to re-poll the ecr api for findings once the status is COMPLERE untill it gets the same result set twice. The consistency-delay input is the time between these re-polls. 15 seconds consistently produced a full set of results for me but i was testing on a image with a lot of vulnerabilities.
+In my testing i noticed that after a COMPLETE scan status is returned from the ecr api, the findings will take a while to all roll in. I added code in my action to re-poll the ecr api for findings once the status is COMPLETE untill it gets the same result set twice. The consistency-delay input is the time between these re-polls. 15 seconds consistently produced a full set of results for me but i was testing on a image with a lot of vulnerabilities.
 
 ```
 Polling for complete scan...
@@ -124,3 +131,26 @@ Polling for consitency...
 { HIGH: 97, MEDIUM: 199, LOW: 28, CRITICAL: 16 }
 Consistent Results!
 ```
+---
+### development ###
+Basic setup
+```
+git clone https://github.com/ecperth/check-aws-inspector
+cd check-aws-inspector
+npm install
+```
+
+Unit tests
+```
+npm run test
+```
+
+Bundle
+```
+npm run bundle
+```
+---
+
+Nothing more to it than that! 
+
+On the off chance someone would like to contribute to the repo just bundle the branch locally and pr. I will set up some basic cicd l8r.
