@@ -3,13 +3,13 @@
   <img src="badges/coverage.svg">
 </p>
 
-# Check AWS Inspector V1.1 #
+# Check AWS Inspector V2 #
 
 This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. It has only been tested with inspector v2. Currently the action also only supports checking the results of scans on images pushed to ecr. May be modified for lambdas and ec2 instances in the future.
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v1.1
+- uses: ecperth/check-aws-inspector@v2
     with:
       # ecr repository name
       repository: 
@@ -75,7 +75,7 @@ jobs:
 
   - name: Check results of aws inspect on image
     id: check-aws-inspector
-    uses: ecperth/check-aws-inspector@v1.0
+    uses: ecperth/check-aws-inspector@v2
     with:
       repository: my-ecr-repo
       registry-id: my-ecr-repo
