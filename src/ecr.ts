@@ -1,17 +1,19 @@
 import * as core from '@actions/core';
 import {
-  ECRClient,
   DescribeImageScanFindingsCommand,
-  ScanNotFoundException,
+  ECRClient,
+  ImageIdentifier,
   ImageNotFoundException,
+  ScanNotFoundException,
 } from '@aws-sdk/client-ecr';
-import { findingSeverities, ScanFindings } from './scanner';
 import { setTimeout } from 'timers/promises';
+import { ScanFindings, findingSeverities } from './scanner';
 
 const client = new ECRClient();
 /**
  * @param {string} repository - ECR repo name
- * @param {tag} tag - Image tag
+ * @param {ImageIdentifier} imageId - image identifier
+ * @param {string} registryId - AWS account id
  * @param {string[]} ignore - VulnerabilityIds to ignore
  * @param {number} timeout - Time in seconds for scan to complete before failure
  * @param {number} pollRate - Time in seconds between polls complete scan status
@@ -22,7 +24,7 @@ const client = new ECRClient();
 export async function getImageScanFindings(
   repository: string,
   registryId: string | undefined,
-  tag: string,
+  imageId: ImageIdentifier,
   ignore: string[],
   timeout: number,
   pollRate: number,
@@ -32,9 +34,7 @@ export async function getImageScanFindings(
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
     registryId: registryId,
-    imageId: {
-      imageTag: tag,
-    },
+    imageId,
   });
 
   // Poll with delay untill we get 'COMPLETE' status.

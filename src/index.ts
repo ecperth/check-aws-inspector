@@ -9,7 +9,9 @@ export async function run() {
   const registryIdInput = core.getInput('registry-id', {
     trimWhitespace: true,
   });
-  const tagInput = core.getInput('tag', { trimWhitespace: true });
+  const imageTag = core.getInput('tag', { trimWhitespace: true });
+  const imageDigest = core.getInput('image-digest', { trimWhitespace: true });
+
   const failOnInput = core
     .getInput('fail-on', { trimWhitespace: true })
     .toUpperCase();
@@ -28,7 +30,7 @@ export async function run() {
       const scanFindings: ScanFindings = await getImageScanFindings(
         repositoryInput,
         registryId,
-        tagInput,
+        { imageTag, imageDigest },
         ignoreList,
         +timeoutInput,
         POLL_RATE,

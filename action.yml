@@ -8,15 +8,18 @@ inputs:
   repository:
     description: 'Repository name'
     required: true
-  registryId:
+  registry-id:
     description: 'Registry id (aws account id of ecr repository)'
     required: false
   tag:
     description: 'Tag of scanned image'
-    required: true
-  fail-on: 
+    required: false
+  digest:
+    description: 'Digest of scanned image'
+    required: false
+  fail-on:
     description: 'The unacceptable severity of any scanned vulnerabilities'
-  ignore: 
+  ignore:
     description: 'The vulnerabilities to ignore'
   timeout:
     description: 'Time in seconds before timing out when polling for scan complete status'

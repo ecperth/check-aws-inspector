@@ -12,29 +12,31 @@ This action can be used to check the findings of an [amazon inspector](https://d
 - uses: ecperth/check-aws-inspector@v2
     with:
       # ecr repository name
-      repository: 
+      repository:
       # ecr registry id (Optional)(
       # aws account id which containts the ecr registry. Only required if
       # different from primary aws account id of authed role
       registry-id:
       # image tag
-      tag: 
+      tag:
+      # image digest
+      image-digest:
       # vulnerability severity to cause action to fail (Optional)
-      # if provided the action will fail if a vulnerability of that severity or higher is 
+      # if provided the action will fail if a vulnerability of that severity or higher is
       # found. [ CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL| UNDEFINED ]
-      fail-on: 
+      fail-on:
       # vulnerabilityIds to ignore (Optional)
       # seperated by spaces, commas or newlines
       ignore:
       # time (seconds) to get complete status from ecr before action fails
-      timeout: 
+      timeout:
       # time (seconds) between polls for consistency
       # i suggest reading the explanation below and experimenting for yourself
       # as aws inspector behaviour may change making this unnecessary
-      consistency-delay: 
+      consistency-delay:
 ```
 ### Output ###
-There is just one output **findingSeverityCounts** which is json containting the severity counts for example: 
+There is just one output **findingSeverityCounts** which is json containting the severity counts for example:
 
 ```{ CRITICAL: 2, HIGH: 5, MEDIUM: 10, LOW: 17 }```
 
@@ -81,7 +83,7 @@ jobs:
       registry-id: my-ecr-repo
       tag: ${{ github.event.inputs.tag }}
       fail-on: CRITICAL
-      ignore: 	
+      ignore:
         CVE-2023-40217
         CVE-2023-36054
       timeout: 60
@@ -89,7 +91,7 @@ jobs:
 
   - name: Print the findings regardless of fail
     if: always()
-    run: echo "${{ steps.check-aws-inspector.outputs.findingSeverityCounts }}" 
+    run: echo "${{ steps.check-aws-inspector.outputs.findingSeverityCounts }}"
 ```
 ---
 ### Permissions ###
@@ -151,6 +153,6 @@ npm run bundle
 ```
 ---
 
-Nothing more to it than that! 
+Nothing more to it than that!
 
 On the off chance someone would like to contribute to the repo just bundle the branch locally and pr. I will set up some basic cicd l8r.

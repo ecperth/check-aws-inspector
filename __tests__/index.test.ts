@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as ecr from '../src/ecr';
 import { run, splitIgnoreList } from '../src/index';
 import { ScanFindings } from '../src/scanner';
+import { ImageIdentifier } from '@aws-sdk/client-ecr';
 
 const getInputMock = jest.spyOn(core, 'getInput');
 const setOutputMock = jest.spyOn(core, 'setOutput');
@@ -115,7 +116,7 @@ describe('execution handling', () => {
       (
         repository: string,
         registryId: string | undefined,
-        tag: string,
+        imageId: ImageIdentifier,
         ignore: string[],
         timeout: number,
         pollRate: number,
@@ -137,7 +138,7 @@ describe('execution handling', () => {
       (
         repository: string,
         registryId: string | undefined,
-        tag: string,
+        imageId: ImageIdentifier,
         ignore: string[],
         timeout: number,
         pollRate: number,
@@ -178,7 +179,7 @@ describe('splitIgnoreList', () => {
 
   it('New Lines and Spaces', () => {
     const ignoreList = splitIgnoreList(`
-			CRIT1, 
+			CRIT1,
 			CRIT2`);
     expect(ignoreList).toEqual(['CRIT1', 'CRIT2']);
   });
