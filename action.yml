@@ -1,4 +1,4 @@
-name: 'Check AWS Inspector'
+name: 'AWS Inspector Image Scan'
 description: 'Check findings of an aws inspector scan'
 branding:
   icon: 'search'

@@ -3,13 +3,13 @@
   <img src="badges/coverage.svg">
 </p>
 
-# Check AWS Inspector V2 #
+# AWS Inspector Image Scan #
 
-This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. It has only been tested with inspector v2. Currently the action also only supports checking the results of scans on images pushed to ecr. May be modified for lambdas and ec2 instances in the future.
+This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. Currently the action also only supports checking the results of scans on images pushed to ecr.
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v2
+- uses: pdeveltere/aws-inspector-image-scan@v1
     with:
       # ecr repository name
       repository:
@@ -137,8 +137,6 @@ Consistent Results!
 ### development ###
 Basic setup
 ```
-git clone https://github.com/ecperth/check-aws-inspector
-cd check-aws-inspector
 npm install
 ```
 
