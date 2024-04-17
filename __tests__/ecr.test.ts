@@ -1,13 +1,13 @@
-import { getImageScanFindings, areFindingsEqual } from '../src/ecr';
 import {
-  ECRClient,
   DescribeImageScanFindingsCommand,
   DescribeImageScanFindingsCommandInput,
   DescribeImageScanFindingsCommandOutput,
-  ScanNotFoundException,
+  ECRClient,
   ImageNotFoundException,
+  ScanNotFoundException,
 } from '@aws-sdk/client-ecr';
 import { mockClient } from 'aws-sdk-client-mock';
+import { areFindingsEqual, getImageScanFindings } from '../src/ecr';
 
 const timeoutSeconds = 0.05;
 const pollRateSeconds = 0.01;
@@ -23,7 +23,7 @@ it('error when timeout is exceeded', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -45,7 +45,7 @@ it('error when unexpected status', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -65,7 +65,7 @@ it('handle when ImageNotFoundException recieved when polling for completion and 
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -85,7 +85,7 @@ it('handle when ScanNotFoundException recieved when polling for completion and k
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -105,7 +105,7 @@ it('return error when Error recieved from ecr client during polling for completi
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -127,7 +127,7 @@ it('complete with no findings', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -150,7 +150,7 @@ it('complete with findings. No failOn', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -176,7 +176,7 @@ describe('set errorMessage on failOn condition', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       [],
       timeoutSeconds,
       pollRateSeconds,
@@ -193,7 +193,7 @@ describe('set errorMessage on failOn condition', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       [],
       timeoutSeconds,
       pollRateSeconds,
@@ -234,7 +234,7 @@ describe('check ignored list', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
       pollRateSeconds,
@@ -250,7 +250,7 @@ describe('check ignored list', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1'],
       timeoutSeconds,
       pollRateSeconds,
@@ -283,7 +283,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
   const input3: DescribeImageScanFindingsCommandInput = {
     repositoryName: 'repository',
     imageId: {
-      imageTag: 'tag',
+      imageTag: 'tag'
     },
     nextToken: 'NEXT_TOKEN2',
   };
@@ -341,7 +341,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
       pollRateSeconds,
@@ -352,7 +352,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
       findingSeverityCounts: { CRITICAL: 2, HIGH: 1, MEDIUM: 2, LOW: 1 },
     });
     /*
-		Check that the last page of results was requested 3 times. Twice while polling 
+		Check that the last page of results was requested 3 times. Twice while polling
 		for consistent findingSeverityCounts and a third time while checking against the
 		ignore list
 		*/
@@ -374,7 +374,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1'],
       timeoutSeconds,
       pollRateSeconds,
@@ -386,8 +386,8 @@ describe('mulitple pages of findingSeverityCounts', () => {
       findingSeverityCounts: { CRITICAL: 2, HIGH: 1, MEDIUM: 2, LOW: 1 },
     });
     /*
-		Check that the last page of results was requested 2 times. Twice while polling 
-		for consistent findingSeverityCounts. Third page should not be reached while 
+		Check that the last page of results was requested 2 times. Twice while polling
+		for consistent findingSeverityCounts. Third page should not be reached while
 		checking against ignore list as the only ignore vulnerability is on the second page.
 		*/
     expect(
