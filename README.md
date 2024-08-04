@@ -19,7 +19,7 @@ This action can be used to check the findings of an [amazon inspector](https://d
       registry-id:
       # image tag
       image-tag:
-      # OR image digest
+      # and/or image digest
       image-digest:
       # vulnerability severity to cause action to fail (optional)
       # if provided the action will fail if a vulnerability of that severity or higher is 
