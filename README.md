@@ -36,9 +36,9 @@ This action can be used to check the findings of an [amazon inspector](https://d
       consistency-delay:
 ```
 ### Output ###
-There is just one output **findingSeverityCounts** which is json containting the severity counts for example: 
+There is just one output **findingSeverityCounts**. A json representation of the counts of detected vulnerabilities grouped by severity. IE: 
 
-```{ CRITICAL: 2, HIGH: 5, MEDIUM: 10, LOW: 17 }```
+```{ "CRITICAL": 2, "HIGH": 5, "MEDIUM": 10, "LOW": 17 }```
 
 ### Example ###
 
