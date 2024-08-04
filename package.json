@@ -1,7 +1,6 @@
 {
   "name": "check-aws-inspector",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "bundle": "npm run format:write && npm run package",
