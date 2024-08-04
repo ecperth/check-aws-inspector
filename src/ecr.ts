@@ -2,8 +2,10 @@ import * as core from '@actions/core';
 import {
   ECRClient,
   DescribeImageScanFindingsCommand,
+  FindingSeverity,
   ScanNotFoundException,
   ImageNotFoundException,
+  ImageIdentifier,
 } from '@aws-sdk/client-ecr';
 import { findingSeverities, ScanFindings } from './scanner';
 import { setTimeout } from 'timers/promises';
@@ -11,7 +13,8 @@ import { setTimeout } from 'timers/promises';
 const client = new ECRClient();
 /**
  * @param {string} repository - ECR repo name
- * @param {tag} tag - Image tag
+ * @param {string | undefined} registryId - ECR registry ID
+ * @param {ImageIdentifier} imageIdentifier - image identifier
  * @param {string[]} ignore - VulnerabilityIds to ignore
  * @param {number} timeout - Time in seconds for scan to complete before failure
  * @param {number} pollRate - Time in seconds between polls complete scan status
@@ -22,7 +25,7 @@ const client = new ECRClient();
 export async function getImageScanFindings(
   repository: string,
   registryId: string | undefined,
-  tag: string,
+  imageIdentifier: ImageIdentifier,
   ignore: string[],
   timeout: number,
   pollRate: number,
@@ -32,9 +35,7 @@ export async function getImageScanFindings(
   const command = new DescribeImageScanFindingsCommand({
     repositoryName: repository,
     registryId: registryId,
-    imageId: {
-      imageTag: tag,
-    },
+    imageId: imageIdentifier,
   });
 
   // Poll with delay untill we get 'COMPLETE' status.
@@ -175,16 +176,16 @@ async function getAllSeverityCounts(
     if (!page.imageScanFindings?.findingSeverityCounts) {
       return result;
     }
-    Object.keys(page.imageScanFindings!.findingSeverityCounts).forEach(
-      (key) => {
-        if (result[key]) {
-          result[key] =
-            result[key] + page.imageScanFindings!.findingSeverityCounts![key];
-        } else {
-          result[key] = page.imageScanFindings!.findingSeverityCounts![key];
-        }
-      },
-    );
+    for (const key in page.imageScanFindings!.findingSeverityCounts) {
+      const findingSeverity = key as FindingSeverity;
+      if (result[key]) {
+        result[key] +=
+          page.imageScanFindings!.findingSeverityCounts![findingSeverity] || 0;
+      } else {
+        result[key] =
+          page.imageScanFindings!.findingSeverityCounts![findingSeverity] || 0;
+      }
+    }
     nextToken = page.nextToken;
   } while (nextToken);
   return result;

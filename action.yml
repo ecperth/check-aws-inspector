@@ -8,12 +8,13 @@ inputs:
   repository:
     description: 'Repository name'
     required: true
-  registryId:
+  registry-id:
     description: 'Registry id (aws account id of ecr repository)'
     required: false
   tag:
     description: 'Tag of scanned image'
-    required: true
+  image-digest:
+    description: 'and/or, digest of scanned image'
   fail-on: 
     description: 'The unacceptable severity of any scanned vulnerabilities'
   ignore: 
