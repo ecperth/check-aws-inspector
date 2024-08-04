@@ -25460,10 +25460,10 @@ async function pollForScanCompletion(command, delay, timeout) {
         }
         catch (err) {
             if (err instanceof client_ecr_1.ImageNotFoundException) {
-                core.warning(err.message);
+                core.info(err.message);
             }
             else if (err instanceof client_ecr_1.ScanNotFoundException) {
-                core.warning(err.message);
+                core.info(err.message);
             }
             else {
                 throw err;

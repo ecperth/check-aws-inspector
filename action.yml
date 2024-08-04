@@ -11,7 +11,7 @@ inputs:
   registry-id:
     description: 'Registry id (aws account id of ecr repository)'
     required: false
-  tag:
+  image-tag:
     description: 'Tag of scanned image'
   image-digest:
     description: 'and/or, digest of scanned image'

@@ -114,9 +114,9 @@ async function pollForScanCompletion(
       }
     } catch (err) {
       if (err instanceof ImageNotFoundException) {
-        core.warning(err.message);
+        core.info(err.message);
       } else if (err instanceof ScanNotFoundException) {
-        core.warning(err.message);
+        core.info(err.message);
       } else {
         throw err;
       }
