@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+
+      - name: install
+        run: npm install
       
       - name: run tests
         run: npm run test
