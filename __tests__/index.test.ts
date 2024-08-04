@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as ecr from '../src/ecr';
 import { run, splitIgnoreList } from '../src/index';
 import { ScanFindings } from '../src/scanner';
+import { ImageIdentifier } from '@aws-sdk/client-ecr';
 
 const getInputMock = jest.spyOn(core, 'getInput');
 const setOutputMock = jest.spyOn(core, 'setOutput');
@@ -90,6 +91,34 @@ describe('validation', () => {
     );
     expect(getImageScanFindingsMock).toBeCalledTimes(0);
   });
+
+  it('fail early on no tag or digest', async () => {
+    getInputMock.mockImplementation((name: string): string => {
+      switch (name) {
+        case 'registry-id':
+          return '012345678999';
+        case 'fail-on':
+          return 'critical';
+        case 'timeout':
+          return '60';
+        case 'consistency-delay':
+          return '1';
+        case 'image-tag':
+          return '';
+        case 'image-digest':
+          return '';
+        default:
+          return '0';
+      }
+    });
+    await run();
+
+    expect(setOutputMock).toBeCalledTimes(0);
+    expect(setFailedMock).toHaveBeenCalledWith(
+      `Must provide at least 1 of image-tag OR image-digest`,
+    );
+    expect(getImageScanFindingsMock).toBeCalledTimes(0);
+  });
 });
 
 describe('execution handling', () => {
@@ -115,7 +144,7 @@ describe('execution handling', () => {
       (
         repository: string,
         registryId: string | undefined,
-        tag: string,
+        imageIdentifier: ImageIdentifier,
         ignore: string[],
         timeout: number,
         pollRate: number,
@@ -137,7 +166,7 @@ describe('execution handling', () => {
       (
         repository: string,
         registryId: string | undefined,
-        tag: string,
+        imageIdentifier: ImageIdentifier,
         ignore: string[],
         timeout: number,
         pollRate: number,

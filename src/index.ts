@@ -9,7 +9,10 @@ export async function run() {
   const registryIdInput = core.getInput('registry-id', {
     trimWhitespace: true,
   });
-  const tagInput = core.getInput('tag', { trimWhitespace: true });
+  const imageTagInput = core.getInput('image-tag', { trimWhitespace: true });
+  const imageDigestInput = core.getInput('image-digest', {
+    trimWhitespace: true,
+  });
   const failOnInput = core
     .getInput('fail-on', { trimWhitespace: true })
     .toUpperCase();
@@ -19,16 +22,28 @@ export async function run() {
     trimWhitespace: true,
   });
 
-  const ignoreList = splitIgnoreList(ignoreInput);
-  const failOn = failOnInput === '' ? undefined : failOnInput;
   const registryId = registryIdInput === '' ? undefined : registryIdInput;
+  const failOn = failOnInput === '' ? undefined : failOnInput;
+  const imageTag = imageTagInput === '' ? undefined : imageTagInput;
+  const imageDigest = imageDigestInput === '' ? undefined : imageDigestInput;
 
-  if (validateInput(registryId, failOn, timeoutInput, consistencyDelayInput)) {
+  const ignoreList = splitIgnoreList(ignoreInput);
+
+  if (
+    validateInput(
+      registryId,
+      failOn,
+      timeoutInput,
+      imageTag,
+      imageDigest,
+      consistencyDelayInput,
+    )
+  ) {
     try {
       const scanFindings: ScanFindings = await getImageScanFindings(
         repositoryInput,
         registryId,
-        tagInput,
+        { imageTag, imageDigest },
         ignoreList,
         +timeoutInput,
         POLL_RATE,
@@ -54,14 +69,16 @@ function validateInput(
   registryId: string | undefined,
   failOn: string | undefined,
   timeout: string,
+  imageTag: string | undefined,
+  imageDigest: string | undefined,
   consistencyDelay: string,
 ): boolean {
-  if (registryId != undefined && !/^\d{12}$/.test(registryId)) {
+  if (registryId && !/^\d{12}$/.test(registryId)) {
     core.setFailed(
       `Invalid registry-id: ${registryId}. Must be 12 digit number`,
     );
     return false;
-  } else if (failOn != undefined && findingSeverities[failOn] == undefined) {
+  } else if (failOn && findingSeverities[failOn] == undefined) {
     core.setFailed(`Invalid fail-on: ${failOn}`);
     return false;
   } else if (!isStringPositiveInteger(timeout)) {
@@ -71,6 +88,9 @@ function validateInput(
     core.setFailed(
       `Invalid consistency-delay: ${consistencyDelay}. Must be a positive integer`,
     );
+    return false;
+  } else if (!imageTag && !imageDigest) {
+    core.setFailed(`Must provide at least 1 of image-tag OR image-digest`);
     return false;
   }
   return true;

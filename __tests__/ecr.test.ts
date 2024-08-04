@@ -6,6 +6,7 @@ import {
   DescribeImageScanFindingsCommandOutput,
   ScanNotFoundException,
   ImageNotFoundException,
+  ScanStatus,
 } from '@aws-sdk/client-ecr';
 import { mockClient } from 'aws-sdk-client-mock';
 
@@ -23,7 +24,7 @@ it('error when timeout is exceeded', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -38,21 +39,21 @@ it('error when unexpected status', async () => {
   const ecrClientMock = mockClient(ECRClient);
   ecrClientMock.on(DescribeImageScanFindingsCommand).resolves({
     imageScanStatus: {
-      status: 'RANDOM_STATUS',
+      status: 'UNSUPPORTED_IMAGE',
     },
   });
 
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
     0,
   );
   expect(result).toEqual({
-    errorMessage: `Unknown status: RANDOM_STATUS`,
+    errorMessage: `Unknown status: UNSUPPORTED_IMAGE`,
   });
 });
 
@@ -65,7 +66,7 @@ it('handle when ImageNotFoundException recieved when polling for completion and 
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -85,7 +86,7 @@ it('handle when ScanNotFoundException recieved when polling for completion and k
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -105,7 +106,7 @@ it('return error when Error recieved from ecr client during polling for completi
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -127,7 +128,7 @@ it('complete with no findings', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -150,7 +151,7 @@ it('complete with findings. No failOn', async () => {
   const result = await getImageScanFindings(
     'repository',
     undefined,
-    'tag',
+    { imageTag: 'tag' },
     [],
     timeoutSeconds,
     pollRateSeconds,
@@ -176,7 +177,7 @@ describe('set errorMessage on failOn condition', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       [],
       timeoutSeconds,
       pollRateSeconds,
@@ -193,7 +194,7 @@ describe('set errorMessage on failOn condition', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       [],
       timeoutSeconds,
       pollRateSeconds,
@@ -234,7 +235,7 @@ describe('check ignored list', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
       pollRateSeconds,
@@ -250,7 +251,7 @@ describe('check ignored list', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1'],
       timeoutSeconds,
       pollRateSeconds,
@@ -341,7 +342,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1', 'CRIT2'],
       timeoutSeconds,
       pollRateSeconds,
@@ -374,7 +375,7 @@ describe('mulitple pages of findingSeverityCounts', () => {
     const result = await getImageScanFindings(
       'repository',
       undefined,
-      'tag',
+      { imageTag: 'tag' },
       ['CRIT1'],
       timeoutSeconds,
       pollRateSeconds,

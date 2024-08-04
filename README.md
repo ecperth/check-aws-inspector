@@ -3,35 +3,37 @@
   <img src="badges/coverage.svg">
 </p>
 
-# Check AWS Inspector V2 #
+# Check AWS Inspector Scan #
 
-This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. It has only been tested with inspector v2. Currently the action also only supports checking the results of scans on images pushed to ecr. May be modified for lambdas and ec2 instances in the future.
+This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. Currently the action also only supports checking the results of scans on images pushed to ecr.
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v2
+- uses: ecperth/check-aws-inspector@v3
     with:
       # ecr repository name
-      repository: 
-      # ecr registry id (Optional)(
+      repository:
+      # ecr registry id (optional)
       # aws account id which containts the ecr registry. Only required if
       # different from primary aws account id of authed role
       registry-id:
       # image tag
-      tag: 
-      # vulnerability severity to cause action to fail (Optional)
+      image-tag:
+      # OR image digest
+      image-digest:
+      # vulnerability severity to cause action to fail (optional)
       # if provided the action will fail if a vulnerability of that severity or higher is 
       # found. [ CRITICAL | HIGH | MEDIUM | LOW | INFORMATIONAL| UNDEFINED ]
-      fail-on: 
-      # vulnerabilityIds to ignore (Optional)
+      fail-on:
+      # vulnerabilityIds to ignore (optional)
       # seperated by spaces, commas or newlines
       ignore:
       # time (seconds) to get complete status from ecr before action fails
-      timeout: 
+      timeout:
       # time (seconds) between polls for consistency
       # i suggest reading the explanation below and experimenting for yourself
       # as aws inspector behaviour may change making this unnecessary
-      consistency-delay: 
+      consistency-delay:
 ```
 ### Output ###
 There is just one output **findingSeverityCounts** which is json containting the severity counts for example: 
@@ -66,9 +68,9 @@ jobs:
 
   - name: Build, tag, and push image to Amazon ECR
     env:
-      ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      ECR_REGISTRY: ${{steps.login-ecr.outputs.registry}}
       ECR_REPOSITORY: my-ecr-repo
-      IMAGE_TAG: ${{ github.event.inputs.tag }}
+      IMAGE_TAG: ${{github.event.inputs.tag}}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -78,8 +80,7 @@ jobs:
     uses: ecperth/check-aws-inspector@v2
     with:
       repository: my-ecr-repo
-      registry-id: my-ecr-repo
-      tag: ${{ github.event.inputs.tag }}
+      image-tag: ${{github.event.inputs.tag}}
       fail-on: CRITICAL
       ignore: 	
         CVE-2023-40217
@@ -151,6 +152,4 @@ npm run bundle
 ```
 ---
 
-Nothing more to it than that! 
-
-On the off chance someone would like to contribute to the repo just bundle the branch locally and pr. I will set up some basic cicd l8r.
+Nothing more to it than that!
