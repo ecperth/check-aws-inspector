@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{github.head_ref}}
 
       - name: install
         run: npm install
