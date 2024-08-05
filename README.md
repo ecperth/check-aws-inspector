@@ -5,7 +5,7 @@
 
 # Check AWS Inspector Scan #
 
-This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. Currently the action also only supports checking the results of scans on images pushed to ecr.
+This action can be used to check the findings of an [amazon inspector](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html) scan. Currently the action only supports checking the results of scans on images pushed to ecr.
 
 ### Usage ###
 ```yml
@@ -77,7 +77,7 @@ jobs:
 
   - name: Check results of aws inspect on image
     id: check-aws-inspector
-    uses: ecperth/check-aws-inspector@v2
+    uses: ecperth/check-aws-inspector@v3
     with:
       repository: my-ecr-repo
       image-tag: ${{github.event.inputs.tag}}
