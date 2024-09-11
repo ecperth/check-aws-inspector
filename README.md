@@ -9,7 +9,7 @@ This action can be used to check the findings of an [amazon inspector](https://d
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v3
+- uses: ecperth/check-aws-inspector@v3.1
     with:
       # ecr repository name
       repository:
@@ -57,7 +57,7 @@ jobs:
   - uses: actions/checkout@v4
 
   - name: Configure AWS Credentials
-    uses: aws-actions/configure-aws-credentials@v3
+    uses: aws-actions/configure-aws-credentials@v3.1
     with:
       role-to-assume: {IAM_ROLE}
       aws-region: ap-southeast-2
@@ -77,7 +77,7 @@ jobs:
 
   - name: Check results of aws inspect on image
     id: check-aws-inspector
-    uses: ecperth/check-aws-inspector@v3
+    uses: ecperth/check-aws-inspector@v3.1
     with:
       repository: my-ecr-repo
       image-tag: ${{github.event.inputs.tag}}
