@@ -107,8 +107,10 @@ async function pollForScanCompletion(
       if (resp.imageScanStatus?.status === 'COMPLETE') {
         core.info(`Scan complete!`);
         return;
-      } else if (resp.imageScanStatus?.status === 'PENDING') {
-        core.info(`Scan status is "Pending"`);
+      } else if (
+        ['PENDING', 'IN_PROGRESS'].includes(resp.imageScanStatus?.status!)
+      ) {
+        core.info(`Scan status is "${resp.imageScanStatus?.status!}"`);
       } else {
         throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
       }

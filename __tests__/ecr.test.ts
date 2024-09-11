@@ -6,18 +6,39 @@ import {
   DescribeImageScanFindingsCommandOutput,
   ScanNotFoundException,
   ImageNotFoundException,
-  ScanStatus,
 } from '@aws-sdk/client-ecr';
 import { mockClient } from 'aws-sdk-client-mock';
 
 const timeoutSeconds = 0.05;
 const pollRateSeconds = 0.01;
 
-it('error when timeout is exceeded', async () => {
+it('error when timeout is exceeded PENDING', async () => {
   const ecrClientMock = mockClient(ECRClient);
   ecrClientMock.on(DescribeImageScanFindingsCommand).resolves({
     imageScanStatus: {
       status: 'PENDING',
+    },
+  });
+
+  const result = await getImageScanFindings(
+    'repository',
+    undefined,
+    { imageTag: 'tag' },
+    [],
+    timeoutSeconds,
+    pollRateSeconds,
+    0,
+  );
+  expect(result).toEqual({
+    errorMessage: `No complete scan after ${timeoutSeconds} seconds`,
+  });
+});
+
+it('error when timeout is exceeded IN_PROGRESS', async () => {
+  const ecrClientMock = mockClient(ECRClient);
+  ecrClientMock.on(DescribeImageScanFindingsCommand).resolves({
+    imageScanStatus: {
+      status: 'IN_PROGRESS',
     },
   });
 
