@@ -25451,7 +25451,7 @@ async function pollForScanCompletion(command, delay, timeout) {
                 core.info(`Scan complete!`);
                 return;
             }
-            else if (['PENDING', 'IN_PROGRESS'].includes(resp.imageScanStatus?.status)) {
+            else if (['PENDING', 'IN_PROGRESS', 'ACTIVE'].includes(resp.imageScanStatus?.status)) {
                 core.info(`Scan status is "${resp.imageScanStatus?.status}"`);
             }
             else {
