@@ -104,11 +104,11 @@ async function pollForScanCompletion(
     try {
       core.info(`Polling for complete scan...`);
       const resp = await client.send(command);
-      if (resp.imageScanStatus?.status === 'COMPLETE') {
+      if (['COMPLETE', 'ACTIVE'].includes(resp.imageScanStatus?.status!)) {
         core.info(`Scan complete!`);
         return;
       } else if (
-        ['PENDING', 'IN_PROGRESS', 'ACTIVE'].includes(resp.imageScanStatus?.status!)
+        ['PENDING', 'IN_PROGRESS'].includes(resp.imageScanStatus?.status!)
       ) {
         core.info(`Scan status is "${resp.imageScanStatus?.status!}"`);
       } else {
