@@ -12,7 +12,7 @@ jobs:
   test_n_build:
     name: test 'n build
     permissions:
-      contents: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
@@ -26,13 +26,7 @@ jobs:
       - name: run tests
         run: npm run test
         
-      - name: bundle
-        run: npm run bundle
-        
-      - name: commit bundled files and test badge
+      - name: fail if bundle produces diff
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add .
-          git commit --allow-empty -m "test badge and bundle"
-          git push
+          npm run bundle
+          if git diff --quiet; then exit 1; fi
