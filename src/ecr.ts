@@ -40,7 +40,7 @@ export async function getImageScanFindings(
 
   // Poll with delay untill we get 'COMPLETE' status.
   try {
-    await pollForScanCompletion(command, pollRate * 1000, timeout);
+    await pollForScanCompletion2(command, pollRate * 1000, timeout);
   } catch (err) {
     if (err instanceof Error) {
       return { errorMessage: err.message };
@@ -94,7 +94,7 @@ export async function getImageScanFindings(
  * Continues to send the provided command untill getting a 'COMPLETE' status
  * or timeout is reached.
  */
-async function pollForScanCompletion(
+async function pollForScanCompletion2(
   command: DescribeImageScanFindingsCommand,
   delay: number,
   timeout: number,

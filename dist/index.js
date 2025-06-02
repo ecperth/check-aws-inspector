@@ -25399,7 +25399,7 @@ async function getImageScanFindings(repository, registryId, imageIdentifier, ign
     });
     // Poll with delay untill we get 'COMPLETE' status.
     try {
-        await pollForScanCompletion(command, pollRate * 1000, timeout);
+        await pollForScanCompletion2(command, pollRate * 1000, timeout);
     }
     catch (err) {
         if (err instanceof Error) {
@@ -25441,7 +25441,7 @@ exports.getImageScanFindings = getImageScanFindings;
  * Continues to send the provided command untill getting a 'COMPLETE' status
  * or timeout is reached.
  */
-async function pollForScanCompletion(command, delay, timeout) {
+async function pollForScanCompletion2(command, delay, timeout) {
     const timeoutMs = Date.now() + timeout * 1000;
     do {
         try {
