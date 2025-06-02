@@ -25447,7 +25447,7 @@ async function pollForScanCompletion(command, delay, timeout) {
         try {
             core.info(`Polling for complete scan...`);
             const resp = await client.send(command);
-            if (resp.imageScanStatus?.status === 'COMPLETE') {
+            if (['COMPLETE', 'ACTIVE'].includes(resp.imageScanStatus?.status)) {
                 core.info(`Scan complete!`);
                 return;
             }
