@@ -25379,6 +25379,8 @@ const core = __importStar(__nccwpck_require__(2186));
 const client_ecr_1 = __nccwpck_require__(8923);
 const scanner_1 = __nccwpck_require__(3232);
 const promises_1 = __nccwpck_require__(8670);
+const pendingStatus = [client_ecr_1.ScanStatus.PENDING, client_ecr_1.ScanStatus.IN_PROGRESS];
+const readyStatus = [client_ecr_1.ScanStatus.COMPLETE, client_ecr_1.ScanStatus.ACTIVE];
 const client = new client_ecr_1.ECRClient();
 /**
  * @param {string} repository - ECR repo name
@@ -25447,11 +25449,11 @@ async function pollForScanCompletion(command, delay, timeout) {
         try {
             core.info(`Polling for complete scan...`);
             const resp = await client.send(command);
-            if (resp.imageScanStatus?.status === 'COMPLETE') {
+            if (readyStatus.includes(resp.imageScanStatus?.status)) {
                 core.info(`Scan complete!`);
                 return;
             }
-            else if (['PENDING', 'IN_PROGRESS'].includes(resp.imageScanStatus?.status)) {
+            else if (pendingStatus.includes(resp.imageScanStatus?.status)) {
                 core.info(`Scan status is "${resp.imageScanStatus?.status}"`);
             }
             else {

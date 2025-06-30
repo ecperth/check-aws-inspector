@@ -6,7 +6,7 @@ import {
   ScanNotFoundException,
   ImageNotFoundException,
   ImageIdentifier,
-  ScanStatus
+  ScanStatus,
 } from '@aws-sdk/client-ecr';
 import { findingSeverities, ScanFindings } from './scanner';
 import { setTimeout } from 'timers/promises';
@@ -111,9 +111,7 @@ async function pollForScanCompletion(
       if (readyStatus.includes(resp.imageScanStatus?.status!)) {
         core.info(`Scan complete!`);
         return;
-      } else if (
-        pendingStatus.includes(resp.imageScanStatus?.status!)
-      ) {
+      } else if (pendingStatus.includes(resp.imageScanStatus?.status!)) {
         core.info(`Scan status is "${resp.imageScanStatus?.status!}"`);
       } else {
         throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
