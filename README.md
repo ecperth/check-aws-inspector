@@ -14,8 +14,8 @@ This action can be used to check the findings of an [amazon inspector](https://d
       # ecr repository name
       repository:
       # ecr registry id (optional)
-      # aws account id which containts the ecr registry. Only required if
-      # different from primary aws account id of authed role
+      # aws account id which contains the ecr registry. Only required if
+      # different from primary aws account id of auth'd role
       registry-id:
       # image tag
       image-tag:
