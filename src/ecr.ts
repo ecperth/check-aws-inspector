@@ -6,9 +6,13 @@ import {
   ScanNotFoundException,
   ImageNotFoundException,
   ImageIdentifier,
+  ScanStatus,
 } from '@aws-sdk/client-ecr';
 import { findingSeverities, ScanFindings } from './scanner';
 import { setTimeout } from 'timers/promises';
+
+const pendingStatus: string[] = [ScanStatus.PENDING, ScanStatus.IN_PROGRESS];
+const readyStatus: string[] = [ScanStatus.COMPLETE, ScanStatus.ACTIVE];
 
 const client = new ECRClient();
 /**
@@ -104,12 +108,10 @@ async function pollForScanCompletion(
     try {
       core.info(`Polling for complete scan...`);
       const resp = await client.send(command);
-      if (resp.imageScanStatus?.status === 'COMPLETE') {
+      if (readyStatus.includes(resp.imageScanStatus?.status!)) {
         core.info(`Scan complete!`);
         return;
-      } else if (
-        ['PENDING', 'IN_PROGRESS'].includes(resp.imageScanStatus?.status!)
-      ) {
+      } else if (pendingStatus.includes(resp.imageScanStatus?.status!)) {
         core.info(`Scan status is "${resp.imageScanStatus?.status!}"`);
       } else {
         throw new Error(`Unknown status: ${resp.imageScanStatus!.status}`);
