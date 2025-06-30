@@ -9,7 +9,7 @@ This action can be used to check the findings of an [amazon inspector](https://d
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v3.1
+- uses: ecperth/check-aws-inspector@v3.2
     with:
       # ecr repository name
       repository:
@@ -77,7 +77,7 @@ jobs:
 
   - name: Check results of aws inspect on image
     id: check-aws-inspector
-    uses: ecperth/check-aws-inspector@v3.1
+    uses: ecperth/check-aws-inspector@v3.2
     with:
       repository: my-ecr-repo
       image-tag: ${{github.event.inputs.tag}}
