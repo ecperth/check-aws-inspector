@@ -57,7 +57,7 @@ jobs:
   - uses: actions/checkout@v4
 
   - name: Configure AWS Credentials
-    uses: aws-actions/configure-aws-credentials@v3.1
+    uses: aws-actions/configure-aws-credentials@v3
     with:
       role-to-assume: {IAM_ROLE}
       aws-region: ap-southeast-2
