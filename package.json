@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "@actions/core": "^1.10.0",
-    "@aws-sdk/client-ecr": "^3.409.0"
+    "@aws-sdk/client-ecr": "^3.995.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.4",
