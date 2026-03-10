@@ -19,14 +19,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{github.head_ref}}
-
-      - name: install
-        run: npm install
       
       - name: run tests
-        run: npm run test
+        run: docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm run test"
         
       - name: fail if bundle produces diff
         run: |
-          npm run bundle
+          docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm run bundle"
           if ! git diff --quiet; then exit 1; fi

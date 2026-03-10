@@ -150,6 +150,13 @@ Bundle
 ```
 npm run bundle
 ```
+
+Or both with Docker
+```
+docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm run test && npm run bundle"
+```
 ---
+
+
 
 Nothing more to it than that!
