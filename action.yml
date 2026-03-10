@@ -31,5 +31,5 @@ outputs:
     description: 'Counts of scanned vulnerabilities grouped by severity'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'

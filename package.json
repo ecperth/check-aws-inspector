@@ -63,11 +63,11 @@
   },
   "dependencies": {
     "@actions/core": "^1.10.0",
-    "@aws-sdk/client-ecr": "^3.409.0"
+    "@aws-sdk/client-ecr": "^3.1004.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.4",
-    "@types/node": "^20.5.7",
+    "@types/node": "^20.19.37",
     "@typescript-eslint/eslint-plugin": "^6.5.0",
     "@typescript-eslint/parser": "^6.5.0",
     "@vercel/ncc": "^0.36.1",

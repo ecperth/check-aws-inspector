@@ -9,7 +9,7 @@ This action can be used to check the findings of an [amazon inspector](https://d
 
 ### Usage ###
 ```yml
-- uses: ecperth/check-aws-inspector@v3.2
+- uses: ecperth/check-aws-inspector@v3.3
     with:
       # ecr repository name
       repository:
@@ -54,7 +54,7 @@ jobs:
       contents: read
 
   steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v6
 
   - name: Configure AWS Credentials
     uses: aws-actions/configure-aws-credentials@v3
@@ -77,7 +77,7 @@ jobs:
 
   - name: Check results of aws inspect on image
     id: check-aws-inspector
-    uses: ecperth/check-aws-inspector@v3.2
+    uses: ecperth/check-aws-inspector@v3.3
     with:
       repository: my-ecr-repo
       image-tag: ${{github.event.inputs.tag}}
@@ -150,6 +150,20 @@ Bundle
 ```
 npm run bundle
 ```
+
+Or same steps with Docker
+```
+docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm install"
+docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm run test"
+docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm run bundle"
+```
+
+All steps with Docker
+```
+docker run --rm -v $(pwd):/app -w /app node:25.8.0-slim sh -c "npm install && npm run test && npm run bundle"
+```
 ---
+
+
 
 Nothing more to it than that!
