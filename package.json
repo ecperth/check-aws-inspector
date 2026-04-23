@@ -62,7 +62,7 @@
     ]
   },
   "dependencies": {
-    "@actions/core": "^1.10.0",
+    "@actions/core": "^1.11.1",
     "@aws-sdk/client-ecr": "^3.1004.0"
   },
   "devDependencies": {
